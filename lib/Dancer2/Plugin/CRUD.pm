@@ -646,8 +646,6 @@ Class::Method::Modifiers::around(
 
 on_plugin_import {
     my $dsl = shift;
-
-    #    my $default = Dancer2::Plugin::CRUD::NullSerializer->new;
     $dsl->app->add_hook(
         Dancer2::Core::Hook->new(
             name => 'before',
@@ -752,15 +750,6 @@ sub UNIVERSAL::RequestSchema : ATTR(CODE,BEGIN) {
 }
 
 1;
-
-package Dancer2::Plugin::CRUD::NullSerializer {
-    use Moo;
-    with 'Dancer2::Core::Role::Serializer';
-    has '+content_type' => ( default => sub { '' } );
-    sub serialize   { $_[1] }
-    sub deserialize { $_[1] }
-    1;
-}
 
 __END__
 
