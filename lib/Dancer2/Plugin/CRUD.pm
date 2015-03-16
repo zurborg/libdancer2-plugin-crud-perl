@@ -13,42 +13,9 @@ use Class::Method::Modifiers ();
 use Class::Load qw(try_load_class);
 use Attribute::Handlers;
 use Dancer2::Plugin::CRUD::Documentation ();
+use Dancer2::Plugin::CRUD::Constants qw(:all);
 
 # VERSION
-
-my %ext_to_fmt = (
-    jsn  => 'JSON',
-    json => 'JSON',
-    yml  => 'YAML',
-    yaml => 'YAML',
-    dmp  => 'Dumper',
-    dump => 'Dumper',
-);
-
-my %type_to_fmt = (
-    'text/x-yaml'        => 'YAML',
-    'text/yaml'          => 'YAML',
-    'text/x-data-dumper' => 'Dumper',
-    'text/x-perl'        => 'Dumper',
-    'text/x-json'        => 'JSON',
-    'text/json'          => 'JSON',
-    'application/json'   => 'JSON',
-);
-
-my %trigger_to_method = (
-    index  => 'get',
-    read   => 'get',
-    create => 'post',
-    update => 'put',
-    patch  => 'patch',
-    delete => 'delete',
-);
-
-my %RE = (
-    uuid =>
-qr{ [0-9a-f]{8} - [0-9a-f]{4} - [0-9a-f]{4} - [0-9a-f]{4} - [0-9a-f]{12} }xsi,
-    number => qr{\d+},
-);
 
 my $stack = [];
 
