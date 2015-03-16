@@ -5,7 +5,7 @@ package Dancer2::Plugin::CRUD::Constants;
 use Exporter qw(import);
 
 our @EXPORT_OK = qw(%ext_to_fmt %type_to_fmt %trigger_to_method %RE);
-our %EXPORT_TAGS = (all => \@EXPORT_OK);
+our %EXPORT_TAGS = ( all => \@EXPORT_OK );
 
 our %ext_to_fmt = (
     jsn  => 'JSON',
