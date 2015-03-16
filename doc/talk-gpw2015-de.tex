@@ -1,0 +1,509 @@
+% This file is based on the template
+% beamer/solutions/conference-talks/conference-ornate-20min.de.tex.
+% The author Till Tantau <tantau@users.sourceforge.net> granted the
+% extra permission to freely use this template as part of this
+% package.
+
+\documentclass[aspectratio=1610]{beamer}
+
+\mode<presentation>
+{
+    \usetheme{Pittsburgh}
+    \setbeamercovered{transparent}
+}
+
+
+\usepackage[german]{babel}
+
+\usepackage[utf8]{inputenc}
+
+\usepackage{hyperref}
+\usepackage{multicol}
+\usepackage{listings}
+\usepackage{color}
+
+\definecolor{mygray}{rgb}{0.5,0.5,0.5}
+\lstset{
+   language=Perl,
+    basicstyle=\small\ttfamily,       % the size of the fonts that are used for the code
+  numbers=left,                    % where to put the line-numbers; possible values are (none, left, right)
+  numbersep=5pt,                   % how far the line-numbers are from the code
+  numberstyle=\tiny\color{mygray}, % the style that is used for the line-numbers
+  aboveskip=0pt,
+  belowskip=0pt,
+}
+
+\setlength{\columnseprule}{1pt}
+\def\columnseprulecolor{\color{blue}}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\title{Writing candy webservices with Dancer2::Plugin::CRUD}
+
+%\subtitle{...}
+
+\author{D.~Zurborg}
+\institute[PPIT] % (optional, aber oft nötig)
+{
+    ProPartner.IT GmbH\\
+    Osnabrück
+}
+
+\date[GPW 2015]{German Perl Workshop, Dresden 2015}
+
+% \pgfdeclareimage[height=0.5cm]{university-logo}{university-logo-filename}
+% \logo{\pgfuseimage{university-logo}}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\begin{document}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\begin{frame}
+  \titlepage
+\end{frame}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\begin{frame}{Was wir zu sehen bekommen}
+    \tableofcontents
+\end{frame}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\section{Einführung}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\subsection{CRUD und REST}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\begin{frame}{Datenbank-Operationen}
+    \begin{itemize}
+    \item
+        \textbf{C}reate
+        \pause
+        \begin{itemize}
+            \item Anlegen
+            \pause
+            \item SQL-92: \texttt{INSERT}
+        \end{itemize}
+    \pause
+    \item
+        \textbf{R}ead
+        \pause
+        \begin{itemize}
+            \item Ausgeben
+            \pause
+            \item SQL-92: \texttt{SELECT}
+        \end{itemize}
+    \pause
+    \item
+        \textbf{U}pdate
+        \pause
+        \begin{itemize}
+            \item Verändern
+            \pause
+            \item SQL-92: \texttt{UPDATE}
+        \end{itemize}
+    \pause
+    \item
+        \textbf{D}elete
+        \pause
+        \begin{itemize}
+            \item Entfernen
+            \pause
+            \item SQL-92: \texttt{DELETE}
+        \end{itemize}
+    \end{itemize}
+\end{frame}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\begin{frame}{Representational State Transfer}{Ein pragmatisches Programmierparadigma}
+    \begin{itemize}
+        \item Abbilden von CRUD-Operationen
+        \pause
+        \begin{itemize}
+            \item Read: \texttt{GET}
+            \pause
+            \item Create: \texttt{POST}
+            \pause
+            \item Update: \texttt{PUT}
+            \pause
+            \item Delete: \texttt{DELETE}
+            \pause
+        \end{itemize}
+        \item Keine Nebeneffekte bei \texttt{GET}
+        \pause
+        \item Eindeutigkeit von Adressen
+        \pause
+        \item Zustandslosigkeit
+        \pause
+        \item Frei wählbare Repräsentationen
+    \end{itemize}
+\end{frame}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\subsection{Marktanalyse}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\begin{frame}{Überblick bestehender Lösungen}
+    \begin{itemize}
+        \item CGI
+        \pause
+        \item Catalyst
+        \pause
+        \item Raisin
+        \pause
+        \item Dancer2
+        \pause
+        \item Dancer2::Plugin::REST
+    \end{itemize}
+\end{frame}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\section{Dancer2::Plugin::CRUD}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\begin{frame}[fragile]{Synopsis}
+
+\begin{lstlisting}
+use Dancer2::Plugin::CRUD;
+\end{lstlisting}\pause\begin{lstlisting}[firstnumber=last]
+resource('person',
+\end{lstlisting}\pause\begin{lstlisting}[firstnumber=last]
+    create => sub {
+        my $app = shift;
+    }, # POST /person
+\end{lstlisting}\pause\begin{lstlisting}[firstnumber=last]
+    read   => sub {
+        my ($app, %param) = @_;
+        my $person_id = $param{person_id};
+    }, # GET /person/1234
+\end{lstlisting}\pause\begin{lstlisting}[firstnumber=last]
+    update => sub {
+        my ($app, %param) = @_;
+        my $person_id = $param{person_id};
+    }, # PUT /person/1234
+\end{lstlisting}\pause\begin{lstlisting}[firstnumber=last]
+    delete => sub {
+        ...
+    }, # DELETE /person/1234
+);
+\end{lstlisting}
+\end{frame}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\begin{frame}[fragile]{Read and Index}
+
+\begin{lstlisting}
+resource('person'
+    index => sub {
+        my $app = shift;
+    }, # GET /person
+\end{lstlisting}\pause\begin{lstlisting}[firstnumber=last]
+    read   => sub {
+        my ($app, %param) = @_;
+        my $person_id = $param{person_id};
+    }, # GET /person/1234
+);
+\end{lstlisting}
+\end{frame}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\begin{frame}[fragile]{Update and Patch}
+
+\begin{lstlisting}
+resource('person'
+    update => sub {
+        my ($app, %param) = @_;
+        my $person_id = $param{person_id};
+    }, # PUT /person/1234
+\end{lstlisting}\pause\begin{lstlisting}[firstnumber=last]
+    patch => sub {
+        my ($app, %param) = @_;
+        my $person_id = $param{person_id};
+    }, # PATCH /person/1234
+);
+\end{lstlisting}
+\end{frame}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\begin{frame}[fragile]{Pluralize}
+
+\begin{itemize}
+    \item \texttt{Text::Pluralize}
+    \pause
+    \item Zur Unterscheidung von \textit{Index}
+    \pause
+    \item Singular: Create, Read, Update, Patch, Delete, ...
+    \pause
+    \item Plural: Index
+    \pause
+    \item[]
+\begin{lstlisting}
+resource('person(s)'
+    index => sub {
+        my ($app, %param) = @_;
+        my $person_id = $param{person_id};
+    }, # GET /persons
+\end{lstlisting}\pause\begin{lstlisting}[firstnumber=last]
+    create => sub {
+        my ($app, %param) = @_;
+        my $person_id = $param{person_id};
+    }, # POST /person
+);
+\end{lstlisting}
+\end{itemize}
+\end{frame}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\begin{frame}{Formats}
+
+    \begin{itemize}
+        \item Format wird wie eine Dateiendung definiert
+        \pause
+        \item \texttt{/resource/:id.:format}
+        \pause
+        \begin{itemize}
+            \item YAML: \texttt{/resource/123.yml}
+            \pause
+            \item JSON: \texttt{/resource/123.json}
+            \pause
+            \item Dumper: \texttt{/resource/123.dump}
+            \pause
+        \end{itemize}
+        \item Eingabeformat entspricht Ausgabeformat
+    \end{itemize}
+
+\end{frame}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\begin{frame}[fragile]{Chaining}
+
+\begin{itemize}
+\item Verketten
+\pause
+\item[]
+\begin{lstlisting}
+resource("foo",
+    single_id => sub {
+\end{lstlisting}\pause\begin{lstlisting}[firstnumber=last]
+        resource("bar",
+            read => sub {
+\end{lstlisting}\pause\begin{lstlisting}[firstnumber=last]
+                my ($app, %param) = @_;
+                my $foo_id = $param{foo_id};
+                my $bar_id = $param{bar_id};
+\end{lstlisting}\pause\begin{lstlisting}[firstnumber=last]
+            } # GET /foo/123/bar/456
+        );
+    },
+);
+\end{lstlisting}
+\end{itemize}
+\end{frame}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\begin{frame}[fragile]{Validation}
+
+\begin{itemize}
+\item \texttt{JSON::Schema}
+\pause
+\item[]
+\begin{lstlisting}
+resource("person",
+    create => sub :RequestSchema(
+\end{lstlisting}\pause\begin{lstlisting}[firstnumber=last]
+        type => 'object',
+        properties => {
+            firstName => { type => 'string' },
+            lastName  => { type => 'string' },
+            age => {
+                type => 'integer',
+                minimum => 0
+            }
+        }
+\end{lstlisting}\pause\begin{lstlisting}[firstnumber=last]
+    ) {
+        my $app = shift;
+    },
+);
+\end{lstlisting}
+\end{itemize}
+\end{frame}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\begin{frame}[fragile]{Documentation}
+
+\begin{itemize}
+\item Dokumentieren
+\pause
+\item[]
+\begin{lstlisting}
+resource("person",
+    index => sub :Description(List all persons in this room) {
+        my $app = shift;
+    },
+);
+\end{lstlisting}\pause\begin{lstlisting}[firstnumber=last]
+
+publish_apiblueprint("/doc");
+\end{lstlisting}
+\end{itemize}
+\end{frame}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\begin{frame}[fragile]{Documentation}
+
+\begin{itemize}
+
+\item API Blueprint\cite{apiblueprint}
+\pause
+\item Markdown Syntax
+\pause
+
+\item
+{\tiny
+\begin{multicols}{3}
+\begin{verbatim}
+FORMAT: 1A
+# Group person
+## Index [/person.{format}]
+### Index [GET]
+List all persons in this room
++ Parameters
+    + format (required, string)
+        + Values
+            + `json`
+            + `yaml`
+            + `dump`
++ Request JSON (application/json)
+    + `/person.json`
+    + Body
+            {
+               "limit" : 10
+            }
++ Response 200 (application/json)
+    + Body
+            [
+               {
+                  "name" : "Alice"
+               },
+               {
+                  "name" : "Bob"
+               }
+            ]
+\end{verbatim}\columnbreak\begin{verbatim}
++ Request YAML (text/x-yaml)
+    + `/person.yml`
+    + Body
+            --- 
+            limit: 10
++ Response 200 (text/x-yaml)
+    + Body
+            --- 
+            - 
+              name: Alice
+            - 
+              name: Bob
+\end{verbatim}\columnbreak\begin{verbatim}
++ Request DUMP (text/x-perl)
+    + `/person.dump`
+    + Body
+            {
+              'limit' => 10
+            }
++ Response 200 (text/x-perl)
+    + Body
+            [
+              {
+                'name' => 'Alice'
+              },
+              {
+                'name' => 'Bob'
+              }
+            ]
+\end{verbatim}
+\end{multicols}
+}
+
+\pause
+\item Und mit aglio\cite{aglio} wird es auch schön :-)
+\end{itemize}
+
+\end{frame}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\begin{frame}[fragile]{Testing}
+
+\begin{itemize}
+\item Testen mit Dumper
+\pause
+\item[]
+\begin{lstlisting}
+use Dancer2::Plugin::CRUD::Test;
+\end{lstlisting}\pause\begin{lstlisting}[firstnumber=last]
+my $T = Dancer2::Plugin::CRUD::Test->new('Webservice');
+\end{lstlisting}\pause\begin{lstlisting}[firstnumber=last]
+my $R = $T->action(
+\end{lstlisting}\pause\begin{lstlisting}[firstnumber=last]
+    'create',
+\end{lstlisting}\pause\begin{lstlisting}[firstnumber=last]
+    '/echo',
+\end{lstlisting}\pause\begin{lstlisting}[firstnumber=last]
+    { 'xx' => 'yy' },
+\end{lstlisting}\pause\begin{lstlisting}[firstnumber=last]
+    expect => 200
+\end{lstlisting}\pause\begin{lstlisting}[firstnumber=last]
+);
+my $data = $R->data;
+\end{lstlisting}\pause\begin{lstlisting}[firstnumber=last]
+is_deeply($data, { 'xx' => 'yy' } );
+\end{lstlisting}
+\end{itemize}
+\end{frame}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\appendix
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\section<presentation>*{\appendixname}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\subsection<presentation>*{Weiterführende Literatur}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\begin{frame}[allowframebreaks]
+  \frametitle<presentation>{Weiterführende Literatur}
+
+\bibliography{talk-gpw2015-de}
+\bibliographystyle{unsrt}
+
+\end{frame}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\end{document}
+
