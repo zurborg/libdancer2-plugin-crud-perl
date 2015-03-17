@@ -763,7 +763,7 @@ There are lots of features, like validation rules, chaining actions, mutual seri
 
     use Dancer2::Plugin::CRUD;
 
-    resource('person'
+    resource('person',
         create => sub {
             my $app = shift;
         },
