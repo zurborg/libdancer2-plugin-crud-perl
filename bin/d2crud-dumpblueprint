@@ -22,4 +22,4 @@ unless ( try_load_class($class) ) {
 no warnings;
 
 print $Dancer2::Plugin::CRUD::RAWDOC{$part}
-|| die "cannot extract blueprint\n";
+  || die "cannot extract blueprint\n";
