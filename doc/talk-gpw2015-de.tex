@@ -4,15 +4,6 @@
 % extra permission to freely use this template as part of this
 % package.
 
-\documentclass[aspectratio=1610]{beamer}
-
-\mode<presentation>
-{
-    \usetheme{Pittsburgh}
-    \setbeamercovered{transparent}
-}
-
-
 \usepackage[german]{babel}
 
 \usepackage[utf8]{inputenc}
@@ -24,13 +15,13 @@
 
 \definecolor{mygray}{rgb}{0.5,0.5,0.5}
 \lstset{
-   language=Perl,
-    basicstyle=\small\ttfamily,       % the size of the fonts that are used for the code
-  numbers=left,                    % where to put the line-numbers; possible values are (none, left, right)
-  numbersep=5pt,                   % how far the line-numbers are from the code
-  numberstyle=\tiny\color{mygray}, % the style that is used for the line-numbers
-  aboveskip=0pt,
-  belowskip=0pt,
+    language=Perl,
+    basicstyle=\small\ttfamily,
+    numbers=left,
+    numbersep=5pt,
+    numberstyle=\tiny\color{mygray},
+    aboveskip=0pt,
+    belowskip=0pt,
 }
 
 \setlength{\columnseprule}{1pt}
@@ -39,8 +30,6 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 \title{Writing candy webservices with Dancer2::Plugin::CRUD}
-
-%\subtitle{...}
 
 \author{D.~Zurborg}
 \institute[PPIT] % (optional, aber oft nötig)
@@ -51,9 +40,6 @@
 
 \date[GPW 2015]{German Perl Workshop, Dresden 2015}
 
-% \pgfdeclareimage[height=0.5cm]{university-logo}{university-logo-filename}
-% \logo{\pgfuseimage{university-logo}}
-
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 \begin{document}
@@ -61,7 +47,11 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 \begin{frame}
-  \titlepage
+    \titlepage
+    \note[item]{Vorstellung}
+    \note[item]{Webservices: Maschinen sprechen mit Maschinen}
+    \note[item]{Standards notwendig, müssen implementierbar sein}
+    \note[item]{Best Current Practise}
 \end{frame}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -81,12 +71,14 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 \begin{frame}{Datenbank-Operationen}
+    \note[item]{Grundlage für alles}
+    \note[item]{Abbildbarkeit der Methoden durch alle Schichten}
     \begin{itemize}
     \item
         \textbf{C}reate
         \pause
         \begin{itemize}
-            \item Anlegen
+            \item Anlegen von neuen Objekten
             \pause
             \item SQL-92: \texttt{INSERT}
         \end{itemize}
@@ -95,7 +87,7 @@
         \textbf{R}ead
         \pause
         \begin{itemize}
-            \item Ausgeben
+            \item Ausgeben eines Objektes
             \pause
             \item SQL-92: \texttt{SELECT}
         \end{itemize}
@@ -104,7 +96,7 @@
         \textbf{U}pdate
         \pause
         \begin{itemize}
-            \item Verändern
+            \item Verändern von Objekten
             \pause
             \item SQL-92: \texttt{UPDATE}
         \end{itemize}
@@ -113,7 +105,7 @@
         \textbf{D}elete
         \pause
         \begin{itemize}
-            \item Entfernen
+            \item Entfernen von Objekten
             \pause
             \item SQL-92: \texttt{DELETE}
         \end{itemize}
@@ -135,6 +127,7 @@
             \pause
             \item Delete: \texttt{DELETE}
             \pause
+            \note[item]{Es gibt auch noch PATCH}
         \end{itemize}
         \item Keine Nebeneffekte bei \texttt{GET}
         \pause
@@ -148,13 +141,37 @@
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
+\begin{frame}{Representational State Transfer}{Status-Codes}
+    \begin{itemize}
+        \item Wo möglich und sinnvoll, werden HTTP Status-Codes verwendet
+        \pause
+        \begin{itemize}
+            \item Alles OK: \texttt{200 OK}
+            \pause
+            \item Entität erstellt: \texttt{201 Created}
+            \note[item] Leerer Body, Header enthält \texttt{Location:}-Feld 
+            \pause
+            \item Nicht gefunden: \texttt{404 Not Found}
+            \note[item] Bezieht sich auf die URI
+            \pause
+        \end{itemize}
+        \item Fehlerfälle sollten alle dokumentiert werden
+        \pause
+        \item Fehlermeldungen sollten maschinenlesbar sein
+        \pause
+        \item Mehr Information auf \url{http://www.restapitutorial.com}\cite{http-status-codes}
+    \end{itemize}
+\end{frame}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
 \subsection{Marktanalyse}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 \begin{frame}{Überblick bestehender Lösungen}
     \begin{itemize}
-        \item CGI
+        \item CGI.pm
         \pause
         \item Catalyst
         \pause
@@ -177,25 +194,25 @@
 \begin{lstlisting}
 use Dancer2::Plugin::CRUD;
 \end{lstlisting}\pause\begin{lstlisting}[firstnumber=last]
-resource('person',
+resource('persons',
 \end{lstlisting}\pause\begin{lstlisting}[firstnumber=last]
     create => sub {
         my $app = shift;
-    }, # POST /person
+    }, # POST /persons
 \end{lstlisting}\pause\begin{lstlisting}[firstnumber=last]
     read   => sub {
         my ($app, %param) = @_;
-        my $person_id = $param{person_id};
-    }, # GET /person/1234
+        my $persons_id = $param{persons_id};
+    }, # GET /persons/1234
 \end{lstlisting}\pause\begin{lstlisting}[firstnumber=last]
     update => sub {
         my ($app, %param) = @_;
-        my $person_id = $param{person_id};
-    }, # PUT /person/1234
+        my $persons_id = $param{persons_id};
+    }, # PUT /persons/1234
 \end{lstlisting}\pause\begin{lstlisting}[firstnumber=last]
     delete => sub {
         ...
-    }, # DELETE /person/1234
+    }, # DELETE /persons/1234
 );
 \end{lstlisting}
 \end{frame}
@@ -205,15 +222,15 @@ resource('person',
 \begin{frame}[fragile]{Read and Index}
 
 \begin{lstlisting}
-resource('person'
+resource('persons'
     index => sub {
         my $app = shift;
-    }, # GET /person
+    }, # GET /persons
 \end{lstlisting}\pause\begin{lstlisting}[firstnumber=last]
     read   => sub {
         my ($app, %param) = @_;
-        my $person_id = $param{person_id};
-    }, # GET /person/1234
+        my $persons_id = $param{persons_id};
+    }, # GET /persons/1234
 );
 \end{lstlisting}
 \end{frame}
@@ -223,16 +240,16 @@ resource('person'
 \begin{frame}[fragile]{Update and Patch}
 
 \begin{lstlisting}
-resource('person'
+resource('persons'
     update => sub {
         my ($app, %param) = @_;
-        my $person_id = $param{person_id};
-    }, # PUT /person/1234
+        my $persons_id = $param{persons_id};
+    }, # PUT /persons/1234
 \end{lstlisting}\pause\begin{lstlisting}[firstnumber=last]
     patch => sub {
         my ($app, %param) = @_;
-        my $person_id = $param{person_id};
-    }, # PATCH /person/1234
+        my $persons_id = $param{persons_id};
+    }, # PATCH /persons/1234
 );
 \end{lstlisting}
 \end{frame}
@@ -242,9 +259,12 @@ resource('person'
 \begin{frame}[fragile]{Pluralize}
 
 \begin{itemize}
-    \item \texttt{Text::Pluralize}
+    \item Es ist eine philosophische Debatte
     \pause
-    \item Zur Unterscheidung von \textit{Index}
+    \item Empfehlung: Alles im Plural
+    \pause
+    \item Für die Esoteriker gibt es \texttt{Text::Pluralize} zur Unterscheidung von \textit{Index}
+    \note[item]{Und bei der Verkettung}
     \pause
     \item Singular: Create, Read, Update, Patch, Delete, ...
     \pause
@@ -252,16 +272,16 @@ resource('person'
     \pause
     \item[]
 \begin{lstlisting}
-resource('person(s)'
+resource('persons(s)'
     index => sub {
         my ($app, %param) = @_;
-        my $person_id = $param{person_id};
+        my $persons_id = $param{persons_id};
     }, # GET /persons
 \end{lstlisting}\pause\begin{lstlisting}[firstnumber=last]
     create => sub {
         my ($app, %param) = @_;
-        my $person_id = $param{person_id};
-    }, # POST /person
+        my $persons_id = $param{persons_id};
+    }, # POST /persons
 );
 \end{lstlisting}
 \end{itemize}
@@ -283,6 +303,7 @@ resource('person(s)'
             \pause
             \item Dumper: \texttt{/resource/123.dump}
             \pause
+            \note[item]{In Arbeit: XML und CBOR}
         \end{itemize}
         \item Eingabeformat entspricht Ausgabeformat
     \end{itemize}
@@ -321,11 +342,11 @@ resource("foo",
 \begin{frame}[fragile]{Validation}
 
 \begin{itemize}
-\item \texttt{JSON::Schema}
+\item \texttt{JSON::Schema}\cite{json-schema}
 \pause
 \item[]
 \begin{lstlisting}
-resource("person",
+resource("persons",
     create => sub :RequestSchema(
 \end{lstlisting}\pause\begin{lstlisting}[firstnumber=last]
         type => 'object',
@@ -355,7 +376,7 @@ resource("person",
 \pause
 \item[]
 \begin{lstlisting}
-resource("person",
+resource("persons",
     index => sub :Description(List all persons in this room) {
         my $app = shift;
     },
@@ -383,8 +404,8 @@ publish_apiblueprint("/doc");
 \begin{multicols}{3}
 \begin{verbatim}
 FORMAT: 1A
-# Group person
-## Index [/person.{format}]
+# Group persons
+## Index [/persons.{format}]
 ### Index [GET]
 List all persons in this room
 + Parameters
@@ -394,7 +415,7 @@ List all persons in this room
             + `yaml`
             + `dump`
 + Request JSON (application/json)
-    + `/person.json`
+    + `/persons.json`
     + Body
             {
                "limit" : 10
@@ -411,7 +432,7 @@ List all persons in this room
             ]
 \end{verbatim}\columnbreak\begin{verbatim}
 + Request YAML (text/x-yaml)
-    + `/person.yml`
+    + `/persons.yml`
     + Body
             --- 
             limit: 10
@@ -424,7 +445,7 @@ List all persons in this room
               name: Bob
 \end{verbatim}\columnbreak\begin{verbatim}
 + Request DUMP (text/x-perl)
-    + `/person.dump`
+    + `/persons.dump`
     + Body
             {
               'limit' => 10
@@ -444,7 +465,7 @@ List all persons in this room
 }
 
 \pause
-\item Und mit aglio\cite{aglio} wird es auch schön :-)
+\item Und mit aglio\cite{aglio} wird es auch schön bunt :-)
 \end{itemize}
 
 \end{frame}
@@ -454,7 +475,7 @@ List all persons in this room
 \begin{frame}[fragile]{Testing}
 
 \begin{itemize}
-\item Testen mit Dumper
+\item Testen mit \texttt{Data::Dumper}
 \pause
 \item[]
 \begin{lstlisting}
@@ -479,7 +500,6 @@ is_deeply($data, { 'xx' => 'yy' } );
 \end{lstlisting}
 \end{itemize}
 \end{frame}
-
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
