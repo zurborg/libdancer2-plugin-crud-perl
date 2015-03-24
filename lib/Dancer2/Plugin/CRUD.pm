@@ -261,12 +261,13 @@ register resource => (
           _concat map { $_->{path} } grep { exists $_->{path} } @$stack;
 
         my %routes;
+        my @routes;
 
         my $add_route = sub {
             my ( $regexp, $action, $coderef ) = @_;
             my $key    = qr{^$prefix$regexp$}s;
             my $method = $trigger_to_method{$action};
-            $dsl->app->add_route(
+            push @routes => $dsl->app->add_route(
                 regexp  => $key,
                 method  => $method,
                 options => {},
@@ -580,7 +581,7 @@ register resource => (
         foreach my $route ( keys %routes ) {
             my $regexp = shift @{ $routes{$route} };
             my @methods = map uc, @{ $routes{$route} };
-            $dsl->app->add_route(
+            push @routes => $dsl->app->add_route(
                 regexp  => $regexp,
                 method  => 'options',
                 options => {},
@@ -596,6 +597,8 @@ register resource => (
         }
 
         push @$docstack => $documentation;
+
+        return @routes;
     }
   ),
   { is_global => 1 };
