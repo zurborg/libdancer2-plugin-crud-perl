@@ -83,7 +83,6 @@ my $PT = boot('Webservice');
 use JSON         ();
 use YAML::Any    ();
 use Data::Dumper ();
-use CBOR::XS     ();
 
 my $deserialzier = {
     yaml => sub {
@@ -97,9 +96,6 @@ my $deserialzier = {
         my $r = eval($x);
         die $@ if $@;
         return $r;
-    },
-    cbor => sub {
-        CBOR::XS::decode_cbor( shift() );
     },
 };
 
