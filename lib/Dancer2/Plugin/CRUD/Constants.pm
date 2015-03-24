@@ -33,6 +33,7 @@ our %trigger_to_method = (
     update => 'put',
     patch  => 'patch',
     delete => 'delete',
+    head   => 'head',
 );
 
 our %RE = (

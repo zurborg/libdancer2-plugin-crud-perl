@@ -203,6 +203,11 @@ sub _build_sub {
 
         $data //= '';
 
+        if ( ref $data eq 'CODE' ) {
+            return if _fceq( $app->request->method => 'HEAD' );
+            $data = $data->() || '';
+        }
+
         return $data;
     };
 }
@@ -273,6 +278,12 @@ register resource => (
                 options => {},
                 code    => $coderef,
             );
+            push @routes => $dsl->app->add_route(
+                regexp  => $key,
+                method  => 'head',
+                options => {},
+                code    => sub { $coderef->(@_); return },
+            ) if $method eq 'get';
             $routes{$key} //= [$key];
             push @{ $routes{$key} } => $method;
         };
