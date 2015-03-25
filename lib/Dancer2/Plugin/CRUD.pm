@@ -1026,7 +1026,9 @@ After this call the documentation stack will be resetted. This allows to generat
     resource("bar2", ...);
     publish_apiblueprint("/bar_doc");
 
-=head1 AUTO DISPATCHING
+=head1 ADDITIONAL FEATURES
+
+=head2 AUTO DISPATCHING
 
 Instead of providing a CodeRef as an action handler, the keyword L<dispatch> enables auto-dispatching. The singular resource name will be camelized and chaining of resources results in sub-sub-classes.
 
@@ -1048,3 +1050,37 @@ Instead of providing a CodeRef as an action handler, the keyword L<dispatch> ena
         }
     );
 
+=head2 HANDLE HEAD REQUEST
+
+A HTTP I<HEAD> request behaves like a normal I<GET> request - instead that no body is returned. But all headers should remain the same. In order to improve performance, like with expensive database operations, there is a feature to suppress the generation of the response body when needed. To do that, return a I<CodeRef> in your handler method. With a normal I<GET> request, the CodeRef will be executed, otherwise not.
+
+    resource('foo',
+        read => sub {
+            # this sub will be run in both HEAD and GET context
+            # ALL headers should be set here!
+            return $status => sub {
+                # this sub will only run when in GET context
+                # finally generate and return content
+            }
+        }
+    );
+
+In other contexts where HEAD does not apply, like POST, PUT, DELETE, ..., the CodeRef will be executed everytime. So its recommended to use this feature only with I<index> and I<read> handlers.
+
+=head2 CROSS ORIGIN RESOURCE SHARING
+
+There is a Dancer2 plugin that handles CORS: L<Dancer2::Plugin::CORS>. The I<resource> keyword returns a list of all created L<Dancer2::Core::Route> objects. Here are two examples to use these plugins together
+
+    use Dancer2::Plugin::CRUD;
+    use Dancer2::Plugin::CORS;
+    my $cors = cors;
+    my @routes = resource(...);
+    cors->rule(...);
+    cors->add(\@routes);
+
+    use Dancer2::Plugin::CRUD;
+    use Dancer2::Plugin::CORS;
+    my $cors = cors;
+    cors->rule(...);
+    cors->add([ resource('foo', ...) ]);
+    cors->add([ resource('bar', ...) ]);
