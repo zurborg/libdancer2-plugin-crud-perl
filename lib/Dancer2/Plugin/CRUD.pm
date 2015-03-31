@@ -113,9 +113,9 @@ sub _throw {
     my $serializer = $app->response->serializer;
 
     my $err = Dancer2::Core::Error->new(
-        message => $message,
-        app     => $app,
-        ( status     => $status ) x !!$status,
+        ( message    => $message    ),
+        ( app        => $app        ),
+        ( status     => $status     ) x !!$status,
         ( serializer => $serializer ) x !!$serializer,
     )->throw;
 
