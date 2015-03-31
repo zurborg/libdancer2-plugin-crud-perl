@@ -80,30 +80,8 @@ require tests;
 
 my $PT = boot('Webservice');
 
-use JSON         ();
-use YAML::Any    ();
-use Data::Dumper ();
-use CBOR::XS     ();
 use Dancer2::Plugin::CRUD::Constants qw(%ext_to_fmt);
 use Class::Load qw(try_load_class);
-
-my $deserialzier = {
-    yaml => sub {
-        YAML::Any::Load(@_);
-    },
-    json => sub {
-        JSON::decode_json( shift() );
-    },
-    dump => sub {
-        my $x = shift;
-        my $r = eval($x);
-        die $@ if $@;
-        return $r;
-    },
-    cbor => sub {
-        CBOR::XS::decode_cbor( shift() );
-    },
-};
 
 sub cmp_formats {
     my ( $PT, $method, $path, $cmp ) = @_;
@@ -113,6 +91,7 @@ sub cmp_formats {
             foreach my $format (qw(yaml json dump cbor)) {
                 my $pkg = 'Dancer2::Serializer::' . $ext_to_fmt{$format};
                 next unless ( try_load_class($pkg) );
+                my $obj = $pkg->new;
                 dotest(
                     "$path.$format" => 3,
                     sub {
@@ -121,7 +100,7 @@ sub cmp_formats {
                             diag( "status code: " . $R->code );
                             return;
                         }
-                        my $data = $deserialzier->{$format}->( $R->content );
+                        my $data = $obj->deserialize( $R->content );
                         ok( $data, "data ok" );
                         cmp_deeply( $data, $cmp, "data compared" );
                     }
