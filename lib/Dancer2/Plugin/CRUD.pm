@@ -80,7 +80,7 @@ sub _set_serializer {
             $serializer = $class->new;
         }
         else {
-            $serializer = undef;
+            die _throw( $app, 'Unsupported Media Type', 415 );
         }
     }
 
