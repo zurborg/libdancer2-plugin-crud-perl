@@ -14,6 +14,7 @@ use Class::Load qw(try_load_class);
 use Attribute::Handlers;
 use Dancer2::Plugin::CRUD::Documentation ();
 use Dancer2::Plugin::CRUD::Constants qw(:all);
+use Scalar::Util qw(blessed);
 
 # VERSION
 
@@ -721,7 +722,7 @@ register define_serializer => (
         $options{mime_types} //= [ 'application/x-' . lc($module) ];
         my $name = blessed $module;
         if (defined $name) {
-            die "$name is not a member of the Dancer2 serializer role" unless $ref->isa('Dancer2::Core::Role::Serializer');
+            die "$name is not a member of the Dancer2 serializer role" unless $module->isa('Dancer2::Core::Role::Serializer');
         } else {
             $name = "Dancer2::Serializer::$module";
         }
