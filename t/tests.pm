@@ -42,7 +42,7 @@ sub boot {
 sub dotest {
     my ( $name, $plan, $code ) = @_;
     return subtest $name => sub {
-        plan tests => $plan;
+        plan tests => $plan if $plan;
         $code->();
     };
 }

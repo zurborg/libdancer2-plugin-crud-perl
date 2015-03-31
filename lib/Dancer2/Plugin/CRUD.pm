@@ -80,7 +80,7 @@ sub _set_serializer {
             $serializer = $class->new;
         }
         else {
-            $serializer = undef;
+            die _throw( $app, 'Unsupported Media Type', 415 );
         }
     }
 
@@ -113,9 +113,9 @@ sub _throw {
     my $serializer = $app->response->serializer;
 
     my $err = Dancer2::Core::Error->new(
-        message => $message,
-        app     => $app,
-        ( status     => $status ) x !!$status,
+        ( message    => $message    ),
+        ( app        => $app        ),
+        ( status     => $status     ) x !!$status,
         ( serializer => $serializer ) x !!$serializer,
     )->throw;
 
@@ -203,6 +203,11 @@ sub _build_sub {
 
         $data //= '';
 
+        if ( ref $data eq 'CODE' ) {
+            return if _fceq( $app->request->method => 'HEAD' );
+            $data = $data->() || '';
+        }
+
         return $data;
     };
 }
@@ -261,17 +266,24 @@ register resource => (
           _concat map { $_->{path} } grep { exists $_->{path} } @$stack;
 
         my %routes;
+        my @routes;
 
         my $add_route = sub {
             my ( $regexp, $action, $coderef ) = @_;
             my $key    = qr{^$prefix$regexp$}s;
             my $method = $trigger_to_method{$action};
-            $dsl->app->add_route(
+            push @routes => $dsl->app->add_route(
                 regexp  => $key,
                 method  => $method,
                 options => {},
                 code    => $coderef,
             );
+            push @routes => $dsl->app->add_route(
+                regexp  => $key,
+                method  => 'head',
+                options => {},
+                code    => sub { $coderef->(@_); return },
+            ) if $method eq 'get';
             $routes{$key} //= [$key];
             push @{ $routes{$key} } => $method;
         };
@@ -580,7 +592,7 @@ register resource => (
         foreach my $route ( keys %routes ) {
             my $regexp = shift @{ $routes{$route} };
             my @methods = map uc, @{ $routes{$route} };
-            $dsl->app->add_route(
+            push @routes => $dsl->app->add_route(
                 regexp  => $regexp,
                 method  => 'options',
                 options => {},
@@ -596,6 +608,8 @@ register resource => (
         }
 
         push @$docstack => $documentation;
+
+        return @routes;
     }
   ),
   { is_global => 1 };
@@ -700,6 +714,26 @@ on_plugin_import {
     );
 };
 
+register define_serializer => (
+    sub {
+        my ( $dsl, $module, %options ) = @_;
+        $options{extensions} //= [ lc $module ];
+        $options{mime_types} //= [ 'application/x-' . lc($module) ];
+        my $name = blessed $module;
+        if (defined $name) {
+            die "$name is not a member of the Dancer2 serializer role" unless $ref->isa('Dancer2::Core::Role::Serializer');
+        } else {
+            $name = "Dancer2::Serializer::$module";
+        }
+        foreach my $extension ( @{ delete $options{extensions} } ) {
+            $Dancer2::Plugin::CRUD::Constants::ext_to_fmt{$extension} = $name;
+        }
+        foreach my $mime_type ( @{ delete $options{mime_types} } ) {
+            $Dancer2::Plugin::CRUD::Constants::type_to_fmt{$mime_type} = $name;
+        }
+    }
+);
+
 register_plugin;
 
 no warnings 'redefine';
@@ -763,7 +797,7 @@ There are lots of features, like validation rules, chaining actions, mutual seri
 
     use Dancer2::Plugin::CRUD;
 
-    resource('person'
+    resource('person',
         create => sub {
             my $app = shift;
         },
@@ -1012,7 +1046,22 @@ After this call the documentation stack will be resetted. This allows to generat
     resource("bar2", ...);
     publish_apiblueprint("/bar_doc");
 
-=head1 AUTO DISPATCHING
+=method define_serializer ($module, %options)
+
+Define an own serializer which is not defined in L<Dancer2> or this package.
+
+    define_serializer('XML', # searches for Dancer2::Serializer::XML
+        extensions => [qw[ xml ]], # format name in URI
+        mime_types => [qw[ text/xml ]],
+    );
+    
+    my $serializer = My::Own::Serializer::Module->new;
+    ## $serialzier must be consumer of Dancer2::Core::Role::Serializer
+    define_serializer($serializer, ...);
+
+=head1 ADDITIONAL FEATURES
+
+=head2 AUTO DISPATCHING
 
 Instead of providing a CodeRef as an action handler, the keyword L<dispatch> enables auto-dispatching. The singular resource name will be camelized and chaining of resources results in sub-sub-classes.
 
@@ -1034,3 +1083,37 @@ Instead of providing a CodeRef as an action handler, the keyword L<dispatch> ena
         }
     );
 
+=head2 HANDLE HEAD REQUEST
+
+A HTTP I<HEAD> request behaves like a normal I<GET> request - instead that no body is returned. But all headers should remain the same. In order to improve performance, like with expensive database operations, there is a feature to suppress the generation of the response body when needed. To do that, return a I<CodeRef> in your handler method. With a normal I<GET> request, the CodeRef will be executed, otherwise not.
+
+    resource('foo',
+        read => sub {
+            # this sub will be run in both HEAD and GET context
+            # ALL headers should be set here!
+            return $status => sub {
+                # this sub will only run when in GET context
+                # finally generate and return content
+            }
+        }
+    );
+
+In other contexts where HEAD does not apply, like POST, PUT, DELETE, ..., the CodeRef will be executed everytime. So its recommended to use this feature only with I<index> and I<read> handlers.
+
+=head2 CROSS ORIGIN RESOURCE SHARING
+
+There is a Dancer2 plugin that handles CORS: L<Dancer2::Plugin::CORS>. The I<resource> keyword returns a list of all created L<Dancer2::Core::Route> objects. Here are two examples to use these plugins together
+
+    use Dancer2::Plugin::CRUD;
+    use Dancer2::Plugin::CORS;
+    my $cors = cors;
+    my @routes = resource(...);
+    cors->rule(...);
+    cors->add(\@routes);
+
+    use Dancer2::Plugin::CRUD;
+    use Dancer2::Plugin::CORS;
+    my $cors = cors;
+    cors->rule(...);
+    cors->add([ resource('foo', ...) ]);
+    cors->add([ resource('bar', ...) ]);

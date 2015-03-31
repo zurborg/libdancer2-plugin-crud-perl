@@ -15,8 +15,15 @@ my ( $class, $part ) = @ARGV;
 
 unshift @INC => $opt_I if $opt_I;
 
-unless ( try_load_class($class) ) {
-    die "cannot load class $class\n";
+if ( $class =~ /\.pm$/ ) {
+    unless ( require($class) ) {
+        die "cannot load file $class: $!\n";
+    }
+}
+else {
+    unless ( try_load_class($class) ) {
+        die "cannot load class $class: $!\n";
+    }
 }
 
 no warnings;

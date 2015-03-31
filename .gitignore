@@ -2,3 +2,4 @@
 Dancer2-Plugin-CRUD-*
 .build/
 .*
+*.ERR
