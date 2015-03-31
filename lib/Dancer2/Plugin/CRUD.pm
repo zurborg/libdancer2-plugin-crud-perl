@@ -838,6 +838,10 @@ Recognized by suffixes I<.jsn> and I<.json> and processed by L<Dancer2::Serializ
 
 Recognized by suffixes I<.dmp> and I<.dump> and processed by L<Dancer2::Serializer::Dumper>.
 
+=item * CBOR
+
+Recognized by suffixes I<.cbr> and I<.cbor> and processed by L<Dancer2::Serializer::CBOR>.
+
 =back
 
 More formats like CBOR and XML will be supported in future.
@@ -1059,6 +1063,8 @@ Define an own serializer which is not defined in L<Dancer2> or this package.
     my $serializer = My::Own::Serializer::Module->new;
     ## $serialzier must be consumer of Dancer2::Core::Role::Serializer
     define_serializer($serializer, ...);
+
+Hint: use this keyword before any I<resource> keyword.
 
 =head1 ADDITIONAL FEATURES
 
