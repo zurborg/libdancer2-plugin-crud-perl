@@ -14,6 +14,8 @@ our %ext_to_fmt = (
     yaml => 'YAML',
     dmp  => 'Dumper',
     dump => 'Dumper',
+    cbr  => 'CBOR',
+    cbor => 'CBOR',
 );
 
 our %type_to_fmt = (
@@ -24,6 +26,7 @@ our %type_to_fmt = (
     'text/x-json'        => 'JSON',
     'text/json'          => 'JSON',
     'application/json'   => 'JSON',
+    'application/cbor'   => 'CBOR',
 );
 
 our %trigger_to_method = (
