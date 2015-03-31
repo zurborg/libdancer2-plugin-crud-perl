@@ -714,6 +714,26 @@ on_plugin_import {
     );
 };
 
+register define_serializer => (
+    sub {
+        my ( $dsl, $module, %options ) = @_;
+        $options{extensions} //= [ lc $module ];
+        $options{mime_types} //= [ 'application/x-' . lc($module) ];
+        my $name = blessed $module;
+        if (defined $name) {
+            die "$name is not a member of the Dancer2 serializer role" unless $ref->isa('Dancer2::Core::Role::Serializer');
+        } else {
+            $name = "Dancer2::Serializer::$module";
+        }
+        foreach my $extension ( @{ delete $options{extensions} } ) {
+            $Dancer2::Plugin::CRUD::Constants::ext_to_fmt{$extension} = $name;
+        }
+        foreach my $mime_type ( @{ delete $options{mime_types} } ) {
+            $Dancer2::Plugin::CRUD::Constants::type_to_fmt{$mime_type} = $name;
+        }
+    }
+);
+
 register_plugin;
 
 no warnings 'redefine';
@@ -1025,6 +1045,19 @@ After this call the documentation stack will be resetted. This allows to generat
     resource("bar1", ...);
     resource("bar2", ...);
     publish_apiblueprint("/bar_doc");
+
+=method define_serializer ($module, %options)
+
+Define an own serializer which is not defined in L<Dancer2> or this package.
+
+    define_serializer('XML', # searches for Dancer2::Serializer::XML
+        extensions => [qw[ xml ]], # format name in URI
+        mime_types => [qw[ text/xml ]],
+    );
+    
+    my $serializer = My::Own::Serializer::Module->new;
+    ## $serialzier must be consumer of Dancer2::Core::Role::Serializer
+    define_serializer($serializer, ...);
 
 =head1 ADDITIONAL FEATURES
 
