@@ -14,6 +14,7 @@ use Class::Load qw(try_load_class);
 use Attribute::Handlers;
 use Dancer2::Plugin::CRUD::Documentation ();
 use Dancer2::Plugin::CRUD::Constants qw(:all);
+use Scalar::Util qw(blessed);
 
 # VERSION
 
@@ -721,7 +722,7 @@ register define_serializer => (
         $options{mime_types} //= [ 'application/x-' . lc($module) ];
         my $name = blessed $module;
         if (defined $name) {
-            die "$name is not a member of the Dancer2 serializer role" unless $ref->isa('Dancer2::Core::Role::Serializer');
+            die "$name is not a member of the Dancer2 serializer role" unless $module->isa('Dancer2::Core::Role::Serializer');
         } else {
             $name = "Dancer2::Serializer::$module";
         }
@@ -836,6 +837,10 @@ Recognized by suffixes I<.jsn> and I<.json> and processed by L<Dancer2::Serializ
 =item * Dumper
 
 Recognized by suffixes I<.dmp> and I<.dump> and processed by L<Dancer2::Serializer::Dumper>.
+
+=item * CBOR
+
+Recognized by suffixes I<.cbr> and I<.cbor> and processed by L<Dancer2::Serializer::CBOR>.
 
 =back
 
@@ -1058,6 +1063,8 @@ Define an own serializer which is not defined in L<Dancer2> or this package.
     my $serializer = My::Own::Serializer::Module->new;
     ## $serialzier must be consumer of Dancer2::Core::Role::Serializer
     define_serializer($serializer, ...);
+
+Hint: use this keyword before any I<resource> keyword.
 
 =head1 ADDITIONAL FEATURES
 
