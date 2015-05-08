@@ -4,7 +4,7 @@
 % extra permission to freely use this template as part of this
 % package.
 
-\usepackage[german]{babel}
+\usepackage[english]{babel}
 
 \usepackage[utf8]{inputenc}
 
@@ -24,6 +24,10 @@
     belowskip=0pt,
 }
 
+\lstdefinestyle{red}{
+    basicstyle=\small\ttfamily\color{red}
+}
+
 \setlength{\columnseprule}{1pt}
 \def\columnseprulecolor{\color{blue}}
 
@@ -31,11 +35,11 @@
 
 \title{Writing candy webservices with Dancer2::Plugin::CRUD}
 
-\author{D.~Zurborg}
-\institute[PPIT] % (optional, aber oft nötig)
+\author{David~Zurborg}
+\institute[WGG]
 {
-    ProPartner.IT GmbH\\
-    Osnabrück
+    WERTGARANTIE Group\\
+    Hannover
 }
 
 \date[GPW 2015]{German Perl Workshop, Dresden 2015}
@@ -56,57 +60,50 @@
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-\begin{frame}{Was wir zu sehen bekommen}
+\begin{frame}{Table of contents}
     \tableofcontents
 \end{frame}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-\section{Einführung}
+\section{Introduction}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-\subsection{CRUD und REST}
+\subsection{CRUD and REST}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-\begin{frame}{Datenbank-Operationen}
-    \note[item]{Grundlage für alles}
-    \note[item]{Abbildbarkeit der Methoden durch alle Schichten}
+\begin{frame}{Database operations}
+    \note[item]{Basics for everything}
+    \note[item]{Represent methods through all layers}
     \begin{itemize}
+    \pause
     \item
         \textbf{C}reate
-        \pause
         \begin{itemize}
-            \item Anlegen von neuen Objekten
-            \pause
+            \item Creates a new object
             \item SQL-92: \texttt{INSERT}
         \end{itemize}
     \pause
     \item
         \textbf{R}ead
-        \pause
         \begin{itemize}
-            \item Ausgeben eines Objektes
-            \pause
+            \item Outputs an (one!) object
             \item SQL-92: \texttt{SELECT}
         \end{itemize}
     \pause
     \item
         \textbf{U}pdate
-        \pause
         \begin{itemize}
-            \item Verändern von Objekten
-            \pause
+            \item Edits an object
             \item SQL-92: \texttt{UPDATE}
         \end{itemize}
     \pause
     \item
         \textbf{D}elete
-        \pause
         \begin{itemize}
-            \item Entfernen von Objekten
-            \pause
+            \item Removes an object
             \item SQL-92: \texttt{DELETE}
         \end{itemize}
     \end{itemize}
@@ -114,9 +111,11 @@
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-\begin{frame}{Representational State Transfer}{Ein pragmatisches Programmierparadigma}
+\begin{frame}{Representational State Transfer}{A pragmatical programm paradigma}
+    \note{Maschinen reden mit Maschinen}
     \begin{itemize}
-        \item Abbilden von CRUD-Operationen
+        \pause
+        \item Representation of CRUD operations
         \pause
         \begin{itemize}
             \item Read: \texttt{GET}
@@ -129,53 +128,91 @@
             \pause
             \note[item]{Es gibt auch noch PATCH}
         \end{itemize}
-        \item Keine Nebeneffekte bei \texttt{GET}
+        \item No side effects with \texttt{GET}
         \pause
-        \item Eindeutigkeit von Adressen
+        \item Unique locations
         \pause
-        \item Zustandslosigkeit
+        \item Stateless
         \pause
-        \item Frei wählbare Repräsentationen
+        \item User-chooseable formats for representation
     \end{itemize}
 \end{frame}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-\begin{frame}{Representational State Transfer}{Status-Codes}
+\begin{frame}{Representational State Transfer}{Unique Location Identifier}
+
+\begin{center}
+
+\pause
+
+\large http://www.example.com/customers/33245
+
+\end{center}
+
+\pause
+        \begin{itemize}
+            \item Scheme: \texttt{http}
+            \pause
+            \item Host: \texttt{www.example.com}
+            \pause
+            \item Resource Name: \texttt{customers}
+            \pause
+            \item Resource ID: \texttt{33245}
+        \end{itemize}
+
+
+
+\end{frame}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\begin{frame}{Representational State Transfer}{Status codes}
     \begin{itemize}
-        \item Wo möglich und sinnvoll, werden HTTP Status-Codes verwendet
+        \pause
+        \item Wherever possible, use standardized HTTP status codes
         \pause
         \begin{itemize}
-            \item Alles OK: \texttt{200 OK}
+            \item Everything OK: \texttt{200 OK}
             \pause
-            \item Entität erstellt: \texttt{201 Created}
-            \note[item] Leerer Body, Header enthält \texttt{Location:}-Feld 
+            \item Entity created: \texttt{201 Created}
+            \note[item]{Leerer Body, Header enthält \texttt{Location:}-Feld}
             \pause
-            \item Nicht gefunden: \texttt{404 Not Found}
-            \note[item] Bezieht sich auf die URI
+            \item User error: \texttt{400 Bad Request}
+            \note[item]{Für viele andere Fehler gibt es Status-Code}
+            \pause
+            \item Not found: \texttt{404 Not Found}
+            \note[item]{Bezieht sich auf die URI}
             \pause
         \end{itemize}
-        \item Fehlerfälle sollten alle dokumentiert werden
+        \item Every possible error should have a documentation
         \pause
-        \item Fehlermeldungen sollten maschinenlesbar sein
+        \item Error message should be readable by machines
         \pause
-        \item Mehr Information auf \url{http://www.restapitutorial.com}\cite{http-status-codes}
+        \item More information at \url{http://www.restapitutorial.com}\cite{restapitutorial}
     \end{itemize}
 \end{frame}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-\subsection{Marktanalyse}
+\subsection{Market analysis}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-\begin{frame}{Überblick bestehender Lösungen}
+\begin{frame}{Overview of current solutions}
     \begin{itemize}
+        \pause
         \item CGI.pm
         \pause
         \item Catalyst
         \pause
         \item Raisin
+        \pause
+        \item Jedi
+        \pause
+        \item Spiffy
+        \pause
+        \item Mojolicious
         \pause
         \item Dancer2
         \pause
@@ -190,7 +227,7 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 \begin{frame}[fragile]{Synopsis}
-
+\pause
 \begin{lstlisting}
 use Dancer2::Plugin::CRUD;
 \end{lstlisting}\pause\begin{lstlisting}[firstnumber=last]
@@ -220,7 +257,7 @@ resource('persons',
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 \begin{frame}[fragile]{Read and Index}
-
+\pause
 \begin{lstlisting}
 resource('persons'
     index => sub {
@@ -238,7 +275,7 @@ resource('persons'
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 \begin{frame}[fragile]{Update and Patch}
-
+\pause
 \begin{lstlisting}
 resource('persons'
     update => sub {
@@ -257,13 +294,13 @@ resource('persons'
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 \begin{frame}[fragile]{Pluralize}
-
+\pause
 \begin{itemize}
-    \item Es ist eine philosophische Debatte
+    \item Philosophical debate
     \pause
-    \item Empfehlung: Alles im Plural
+    \item Suggestion: every resource in plural
     \pause
-    \item Für die Esoteriker gibt es \texttt{Text::Pluralize} zur Unterscheidung von \textit{Index}
+    \item There is \texttt{Text::Pluralize} for \textit{Index}
     \note[item]{Und bei der Verkettung}
     \pause
     \item Singular: Create, Read, Update, Patch, Delete, ...
@@ -272,7 +309,7 @@ resource('persons'
     \pause
     \item[]
 \begin{lstlisting}
-resource('persons(s)'
+resource('person(s)'
     index => sub {
         my ($app, %param) = @_;
         my $persons_id = $param{persons_id};
@@ -281,7 +318,7 @@ resource('persons(s)'
     create => sub {
         my ($app, %param) = @_;
         my $persons_id = $param{persons_id};
-    }, # POST /persons
+    }, # POST /person
 );
 \end{lstlisting}
 \end{itemize}
@@ -290,9 +327,9 @@ resource('persons(s)'
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 \begin{frame}{Formats}
-
+    \pause
     \begin{itemize}
-        \item Format wird wie eine Dateiendung definiert
+        \item Content type by extension
         \pause
         \item \texttt{/resource/:id.:format}
         \pause
@@ -303,9 +340,13 @@ resource('persons(s)'
             \pause
             \item Dumper: \texttt{/resource/123.dump}
             \pause
-            \note[item]{In Arbeit: XML und CBOR}
+            \note[item]{WIP: XML and CBOR}
         \end{itemize}
-        \item Eingabeformat entspricht Ausgabeformat
+        \item Input format is also output format
+        \pause
+        \item from YAML to YAML
+        \pause
+        \item from JSON to JSON
     \end{itemize}
 
 \end{frame}
@@ -313,9 +354,9 @@ resource('persons(s)'
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 \begin{frame}[fragile]{Chaining}
-
+\pause
 \begin{itemize}
-\item Verketten
+\item Chain resources together
 \pause
 \item[]
 \begin{lstlisting}
@@ -340,7 +381,7 @@ resource("foo",
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 \begin{frame}[fragile]{Validation}
-
+\pause
 \begin{itemize}
 \item \texttt{JSON::Schema}\cite{json-schema}
 \pause
@@ -348,7 +389,7 @@ resource("foo",
 \begin{lstlisting}
 resource("persons",
     create => sub :RequestSchema(
-\end{lstlisting}\pause\begin{lstlisting}[firstnumber=last]
+\end{lstlisting}\pause\begin{lstlisting}[firstnumber=last,style=red]
         type => 'object',
         properties => {
             firstName => { type => 'string' },
@@ -370,9 +411,9 @@ resource("persons",
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 \begin{frame}[fragile]{Documentation}
-
+\pause
 \begin{itemize}
-\item Dokumentieren
+\item Make your consumers happy
 \pause
 \item[]
 \begin{lstlisting}
@@ -391,7 +432,7 @@ publish_apiblueprint("/doc");
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 \begin{frame}[fragile]{Documentation}
-
+\pause
 \begin{itemize}
 
 \item API Blueprint\cite{apiblueprint}
@@ -402,36 +443,36 @@ publish_apiblueprint("/doc");
 \item
 {\tiny
 \begin{multicols}{3}
-\begin{verbatim}
+\begin{semiverbatim}
 FORMAT: 1A
 # Group persons
-## Index [/persons.{format}]
+## Index [\alert<5>{/persons.\{format\}}]
 ### Index [GET]
 List all persons in this room
 + Parameters
-    + format (required, string)
+    + format (\alert<6>{required, string})
         + Values
             + `json`
             + `yaml`
             + `dump`
-+ Request JSON (application/json)
-    + `/persons.json`
++ Request \alert<7>{JSON} (\alert<8>{application/json})
+    + `\alert<9>{/persons.json}`
     + Body
-            {
+            \alert<10>{\{
                "limit" : 10
-            }
+            \}}
 + Response 200 (application/json)
     + Body
-            [
-               {
+            \alert<11>{[
+               \{
                   "name" : "Alice"
-               },
-               {
+               \},
+               \{
                   "name" : "Bob"
-               }
-            ]
-\end{verbatim}\columnbreak\begin{verbatim}
-+ Request YAML (text/x-yaml)
+               \}
+            ]}
+\end{semiverbatim}\columnbreak\begin{semiverbatim}
+\alert<12>{+ Request YAML (text/x-yaml)
     + `/persons.yml`
     + Body
             --- 
@@ -443,60 +484,63 @@ List all persons in this room
               name: Alice
             - 
               name: Bob
-\end{verbatim}\columnbreak\begin{verbatim}
-+ Request DUMP (text/x-perl)
+}\end{semiverbatim}\columnbreak\begin{semiverbatim}
+\alert<13>{+ Request DUMP (text/x-perl)
     + `/persons.dump`
     + Body
-            {
+            \{
               'limit' => 10
-            }
+            \}
 + Response 200 (text/x-perl)
     + Body
             [
-              {
+              \{
                 'name' => 'Alice'
-              },
-              {
+              \},
+              \{
                 'name' => 'Bob'
-              }
+              \}
             ]
-\end{verbatim}
+}\end{semiverbatim}
 \end{multicols}
 }
 
 \pause
-\item Und mit aglio\cite{aglio} wird es auch schön bunt :-)
+\pause
+\pause
+\pause
+\pause
+\pause
+\pause
+\pause
+\pause
+\pause
+Compile blueprint to HTML with aglio\cite{aglio}
 \end{itemize}
 
 \end{frame}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-\begin{frame}[fragile]{Testing}
-
+\begin{frame}[fragile]{Unit testing}
+\pause
 \begin{itemize}
-\item Testen mit \texttt{Data::Dumper}
+\item Do tests with \texttt{Data::Dumper}
 \pause
 \item[]
 \begin{lstlisting}
 use Dancer2::Plugin::CRUD::Test;
-\end{lstlisting}\pause\begin{lstlisting}[firstnumber=last]
 my $T = Dancer2::Plugin::CRUD::Test->new('Webservice');
 \end{lstlisting}\pause\begin{lstlisting}[firstnumber=last]
 my $R = $T->action(
-\end{lstlisting}\pause\begin{lstlisting}[firstnumber=last]
-    'create',
-\end{lstlisting}\pause\begin{lstlisting}[firstnumber=last]
-    '/echo',
+    create => '/echo',
 \end{lstlisting}\pause\begin{lstlisting}[firstnumber=last]
     { 'xx' => 'yy' },
 \end{lstlisting}\pause\begin{lstlisting}[firstnumber=last]
-    expect => 200
-\end{lstlisting}\pause\begin{lstlisting}[firstnumber=last]
+    expect => 200,
 );
-my $data = $R->data;
 \end{lstlisting}\pause\begin{lstlisting}[firstnumber=last]
-is_deeply($data, { 'xx' => 'yy' } );
+is_deeply($R->data, { 'xx' => 'yy' } );
 \end{lstlisting}
 \end{itemize}
 \end{frame}
@@ -511,15 +555,30 @@ is_deeply($data, { 'xx' => 'yy' } );
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-\subsection<presentation>*{Weiterführende Literatur}
+\subsection<presentation>*{Link tips}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 \begin{frame}[allowframebreaks]
-  \frametitle<presentation>{Weiterführende Literatur}
+  \frametitle<presentation>{Link tips}
 
 \bibliography{talk-gpw2015-de}
 \bibliographystyle{unsrt}
+
+\end{frame}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\begin{frame}[fragile]
+
+\begin{center}
+
+    \huge{
+        Follow me at\\
+        \url{https://github.com/zurborg}
+    }
+
+\end{center}
 
 \end{frame}
 
