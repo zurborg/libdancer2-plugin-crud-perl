@@ -236,12 +236,11 @@ sub _get_documentation {
 }
 
 sub _getsub {
-    my ( $resources, $action, $sub ) = @_;
+    my ( $resources, $action, $sub, $pkg ) = @_;
     return $sub if ref $sub eq 'CODE';
     die "handler for action $action not defined" unless defined $sub;
     die "unknown handler for action $action: $sub"
       unless _fceq( $sub => 'dispatch' );
-    my $pkg = ( caller(2) )[0];
     map { $pkg .= '::' . _camelize($_) } @$resources;
     $sub = "${pkg}::${action}_action";
     return \&$sub;
@@ -253,6 +252,8 @@ register resource => (
 
         my ( $single, $plural ) = _pluralize($resource);
 
+        $options{caller} //= ( caller(1) )[0];
+    
         my $idregex = delete( $options{idregex} ) || qr{[^\/\.\:\?]+};
 
         my $captvar = delete( $options{captvar} ) || "${single}_id";
@@ -329,7 +330,8 @@ register resource => (
             if ( exists $options{$method} ) {
                 $cfg->{method} = $method;
                 my $coderef =
-                  _getsub( $resources, $method, delete $options{$method} );
+                  _getsub( $resources, $method, delete $options{$method},
+                    $options{caller} );
                 my $doc     = _get_documentation($coderef);
                 my %actopts = _get_attributes($coderef);
 
@@ -430,7 +432,8 @@ register resource => (
             if ( exists $options{$method} ) {
                 $cfg->{method} = $method;
                 my $coderef =
-                  _getsub( $resources, $method, delete $options{$method} );
+                  _getsub( $resources, $method, delete $options{$method},
+                    $options{caller} );
                 my $doc     = _get_documentation($coderef);
                 my %actopts = _get_attributes($coderef);
 
@@ -520,7 +523,8 @@ register resource => (
             if ( exists $options{$method} ) {
                 $cfg->{method} = $method;
                 my $coderef =
-                  _getsub( $resources, $method, delete $options{$method} );
+                  _getsub( $resources, $method, delete $options{$method},
+                    $options{caller} );
                 my $doc     = _get_documentation($coderef);
                 my %actopts = _get_attributes($coderef);
 
