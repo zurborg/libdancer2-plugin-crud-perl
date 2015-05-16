@@ -12,7 +12,7 @@ package Webservice {
         'foo_xx',
         index  => 'dispatch',
         single => sub {
-            resource( 'bar_yy', index => 'dispatch', );
+            resource( 'bar_yy', dispatch => [qw[ index ]], );
         },
     );
 
