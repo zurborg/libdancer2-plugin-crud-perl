@@ -246,404 +246,408 @@ sub _getsub {
     return \&$sub;
 }
 
-register resource => (
-    sub {
-        my ( $dsl, $resource, %options ) = @_;
 
-        my ( $single, $plural ) = _pluralize($resource);
+sub single_resource;
 
-        $options{caller} //= ( caller(1) )[0];
-    
-        my $idregex = delete( $options{idregex} ) || qr{[^\/\.\:\?]+};
+sub single_resource {
+    my ( $dsl, $resource, %options ) = @_;
 
-        my $captvar = delete( $options{captvar} ) || "${single}_id";
+    $options{caller} //= ( caller(1) )[0];
 
-        my $documentation = {
-            captvar => $captvar,
-            idtype  => "$idregex",
-            intro   => delete( $options{description} ),
-        };
 
-        if ( _fcne( ref($idregex) => 'regexp' ) ) {
-            $idregex = $RE{$idregex}
-              || confess("unknown idregex type: $idregex");
+    my ( $single, $plural ) = _pluralize($resource);
+
+    my $idregex = delete( $options{idregex} ) || qr{[^\/\.\:\?]+};
+
+    my $captvar = delete( $options{captvar} ) || "${single}_id";
+
+    my $documentation = {
+        captvar => $captvar,
+        idtype  => "$idregex",
+        intro   => delete( $options{description} ),
+    };
+
+    if ( _fcne( ref($idregex) => 'regexp' ) ) {
+        $idregex = $RE{$idregex}
+          || confess("unknown idregex type: $idregex");
+    }
+    $idregex = qr{ (?<$captvar> $idregex ) }xsi;
+
+    my $fmtregex = join '|', map quotemeta, keys %ext_to_fmt;
+
+    my $prefix =
+      _concat map { $_->{prefix} } grep { exists $_->{prefix} } @$stack;
+    my $pathbase =
+      _concat map { $_->{path} } grep { exists $_->{path} } @$stack;
+
+    my %routes;
+    my @routes;
+
+    my $add_route = sub {
+        my ( $regexp, $action, $coderef ) = @_;
+        my $key    = qr{^$prefix$regexp$}s;
+        my $method = $trigger_to_method{$action};
+        push @routes => $dsl->app->add_route(
+            regexp  => $key,
+            method  => $method,
+            options => {},
+            code    => $coderef,
+        );
+        push @routes => $dsl->app->add_route(
+            regexp  => $key,
+            method  => 'head',
+            options => {},
+            code    => sub { $coderef->(@_); return },
+        ) if $method eq 'get';
+        $routes{$key} //= [$key];
+        push @{ $routes{$key} } => $method;
+    };
+
+    my $cfg = {
+        single        => $single,
+        plural        => $plural,
+        validate      => delete( $options{validate} ),
+        documentation => $documentation,
+    };
+    push @$stack => $cfg;
+
+    $documentation->{name} =
+      join ' of ' => reverse map { $_->{single} } @$stack;
+
+    my $resources = [ map { $_->{single} } @$stack ];
+
+    ### single_id ###
+    $cfg->{scope}   = 'single_id';
+    $cfg->{chain}   = delete $options{chain_id};
+    $cfg->{captvar} = $captvar;
+    if ( exists $options{single_id} ) {
+        my $sub = delete $options{single_id};
+        $cfg->{prefix} = qr{ /+ \Q$single\E / $idregex }xsi;
+        $cfg->{path}   = "/$single/{$captvar}";
+        $sub->();
+        delete $cfg->{prefix};
+        delete $cfg->{path};
+    }
+
+    if ( exists $options{dispatch} ) {
+        my $dispatch = delete $options{dispatch};
+        my @dispatch;
+        if ( ref $dispatch eq 'ARRAY' ) {
+            @dispatch = @$dispatch;
         }
-        $idregex = qr{ (?<$captvar> $idregex ) }xsi;
-
-        my $fmtregex = join '|', map quotemeta, keys %ext_to_fmt;
-
-        my $prefix =
-          _concat map { $_->{prefix} } grep { exists $_->{prefix} } @$stack;
-        my $pathbase =
-          _concat map { $_->{path} } grep { exists $_->{path} } @$stack;
-
-        my %routes;
-        my @routes;
-
-        my $add_route = sub {
-            my ( $regexp, $action, $coderef ) = @_;
-            my $key    = qr{^$prefix$regexp$}s;
-            my $method = $trigger_to_method{$action};
-            push @routes => $dsl->app->add_route(
-                regexp  => $key,
-                method  => $method,
-                options => {},
-                code    => $coderef,
-            );
-            push @routes => $dsl->app->add_route(
-                regexp  => $key,
-                method  => 'head',
-                options => {},
-                code    => sub { $coderef->(@_); return },
-            ) if $method eq 'get';
-            $routes{$key} //= [$key];
-            push @{ $routes{$key} } => $method;
-        };
-
-        my $cfg = {
-            single        => $single,
-            plural        => $plural,
-            validate      => delete( $options{validate} ),
-            documentation => $documentation,
-        };
-        push @$stack => $cfg;
-
-        $documentation->{name} =
-          join ' of ' => reverse map { $_->{single} } @$stack;
-
-        my $resources = [ map { $_->{single} } @$stack ];
-
-        ### single_id ###
-        $cfg->{scope}   = 'single_id';
-        $cfg->{chain}   = delete $options{chain_id};
-        $cfg->{captvar} = $captvar;
-        if ( exists $options{single_id} ) {
-            my $sub = delete $options{single_id};
-            $cfg->{prefix} = qr{ /+ \Q$single\E / $idregex }xsi;
-            $cfg->{path}   = "/$single/{$captvar}";
-            $sub->();
-            delete $cfg->{prefix};
-            delete $cfg->{path};
+        elsif ( defined $dispatch and not ref $dispatch ) {
+            @dispatch = map { s{\s+}{}gr } split /,+/, $dispatch;
         }
-
-        if ( exists $options{dispatch} ) {
-            my $dispatch = delete $options{dispatch};
-            my @dispatch;
-            if ( ref $dispatch eq 'ARRAY' ) {
-                @dispatch = @$dispatch;
-            }
-            elsif ( defined $dispatch and not ref $dispatch ) {
-                @dispatch = map { s{\s+}{}gr } split /,+/, $dispatch;
-            }
-            else {
-                croak "unknown reftype for dispatch: " . ref($dispatch);
-            }
-            foreach my $method (@dispatch) {
-                $options{$method} //= 'dispatch';
-            }
+        else {
+            croak "unknown reftype for dispatch: " . ref($dispatch);
         }
+        foreach my $method (@dispatch) {
+            $options{$method} //= 'dispatch';
+        }
+    }
 
-        foreach my $method (qw(read update patch delete)) {
-            if ( exists $options{$method} ) {
-                $cfg->{method} = $method;
-                my $coderef =
-                  _getsub( $resources, $method, delete $options{$method},
-                    $options{caller} );
-                my $doc     = _get_documentation($coderef);
-                my %actopts = _get_attributes($coderef);
+    foreach my $method (qw(read update patch delete)) {
+        if ( exists $options{$method} ) {
+            $cfg->{method} = $method;
+            my $coderef =
+              _getsub( $resources, $method, delete $options{$method},
+                $options{caller} );
+            my $doc     = _get_documentation($coderef);
+            my %actopts = _get_attributes($coderef);
 
-                my $lfmtregex = $fmtregex;
+            my $lfmtregex = $fmtregex;
 
-                $documentation->{$method} = {
-                    %$doc,
-                    Path => "$pathbase/$single/{$captvar}.{format}",
-                    PathP =>
-                      "$pathbase/$single/{$captvar}.${method}p?{callback}",
-                    hasid => 1,
-                    opts  => \%actopts,
-                  }
-                  if $doc;
+            $documentation->{$method} = {
+                %$doc,
+                Path  => "$pathbase/$single/{$captvar}.{format}",
+                PathP => "$pathbase/$single/{$captvar}.${method}p?{callback}",
+                hasid => 1,
+                opts  => \%actopts,
+              }
+              if $doc;
 
-                if ( $doc and exists $actopts{iformat} ) {
-                    my %formats = map { ( $_->[0] => $_->[1] || undef ) } map {
-                        m{^ \s* (\S+) (?: \s+ \( \s* (\S*) \s* \) )? \s* $}x
-                          ? [ $1, $2 ]
-                          : [$_]
-                    } @{ $actopts{iformat} };
-                    $documentation->{$method}->{iformats} = \%formats;
-                }
+            if ( $doc and exists $actopts{iformat} ) {
+                my %formats = map { ( $_->[0] => $_->[1] || undef ) } map {
+                    m{^ \s* (\S+) (?: \s+ \( \s* (\S*) \s* \) )? \s* $}x
+                      ? [ $1, $2 ]
+                      : [$_]
+                } @{ $actopts{iformat} };
+                $documentation->{$method}->{iformats} = \%formats;
+            }
 
-                if ( exists $actopts{oformat} ) {
-                    my %formats = map { ( $_->[0] => $_->[1] || undef ) } map {
-                        m{^ \s* (\S+) (?: \s+ \( \s* (\S*) \s* \) )? \s* $}x
-                          ? [ $1, $2 ]
-                          : [$_]
-                    } @{ $actopts{oformat} };
-                    my @formats = keys %formats;
-                    $lfmtregex = join '|' => map quotemeta, @formats;
-                    $lfmtregex = qr{(?:$lfmtregex)}x;
-                    if ($doc) {
-                        $documentation->{$method}->{oformats} = \%formats;
-                        if ( @formats == 1 ) {
-                            $documentation->{$method}->{Path} =~
-                              s{\Q{format}\E}{$formats[0]}egi;
-                        }
+            if ( exists $actopts{oformat} ) {
+                my %formats = map { ( $_->[0] => $_->[1] || undef ) } map {
+                    m{^ \s* (\S+) (?: \s+ \( \s* (\S*) \s* \) )? \s* $}x
+                      ? [ $1, $2 ]
+                      : [$_]
+                } @{ $actopts{oformat} };
+                my @formats = keys %formats;
+                $lfmtregex = join '|' => map quotemeta, @formats;
+                $lfmtregex = qr{(?:$lfmtregex)}x;
+                if ($doc) {
+                    $documentation->{$method}->{oformats} = \%formats;
+                    if ( @formats == 1 ) {
+                        $documentation->{$method}->{Path} =~
+                          s{\Q{format}\E}{$formats[0]}egi;
                     }
                 }
+            }
 
-                my $sub = _build_sub(
-                    $dsl,
-                    $method        => $coderef,
-                    schema         => delete( $actopts{schema} ),
-                    dont_serialize => exists $actopts{iformat},
-                );
-                $add_route->(
-                    qr{
+            my $sub = _build_sub(
+                $dsl,
+                $method        => $coderef,
+                schema         => delete( $actopts{schema} ),
+                dont_serialize => exists $actopts{iformat},
+            );
+            $add_route->(
+                qr{
                         /+ \Q$single\E
                         /+ $idregex
                         (?:/+|\.(?<format>$lfmtregex))
                     }xs,
-                    $method,
-                    $sub,
-                );
-                if (    $options{jsonp}
-                    and not exists $actopts{iformat}
-                    and not exists $actopts{oformat} )
-                {
-                    $dsl->app->add_route(
-                        regexp => qr{^
+                $method,
+                $sub,
+            );
+            if (    $options{jsonp}
+                and not exists $actopts{iformat}
+                and not exists $actopts{oformat} )
+            {
+                $dsl->app->add_route(
+                    regexp => qr{^
                             $prefix
                             /+ \Q$single\E
                             /+ $idregex
                             \.(?<format>${method}p)
                         $}xsi,
-                        method  => 'get',
-                        options => {},
-                        code    => $sub
-                    );
-                }
-                else {
-                    delete $documentation->{$method}->{PathP} if $doc;
-                }
-                delete $cfg->{method};
+                    method  => 'get',
+                    options => {},
+                    code    => $sub
+                );
+            }
+            else {
+                delete $documentation->{$method}->{PathP} if $doc;
+            }
+            delete $cfg->{method};
+        }
+
+    }
+
+    delete $cfg->{captvar};
+    delete $cfg->{chain};
+
+    ### single ###
+    $cfg->{scope} = 'single';
+    $cfg->{chain} = delete $options{chain};
+    if ( exists $options{single} ) {
+        my $sub = delete $options{single};
+        $cfg->{prefix} = qr{ /+ \Q$single\E }xsi;
+        $cfg->{path}   = "/$single";
+        $sub->();
+        delete $cfg->{prefix};
+        delete $cfg->{path};
+    }
+
+    foreach my $method (qw(create)) {
+        if ( exists $options{$method} ) {
+            $cfg->{method} = $method;
+            my $coderef =
+              _getsub( $resources, $method, delete $options{$method},
+                $options{caller} );
+            my $doc     = _get_documentation($coderef);
+            my %actopts = _get_attributes($coderef);
+
+            my $lfmtregex = $fmtregex;
+
+            $documentation->{$method} = {
+                %$doc,
+                Path  => "$pathbase/$single.{format}",
+                PathP => "$pathbase/$single.${method}p?{callback}",
+                hasid => 0,
+                opts  => \%actopts,
+              }
+              if $doc;
+
+            if ( $doc and exists $actopts{iformat} ) {
+                my %formats = map { ( $_->[0] => $_->[1] || undef ) } map {
+                    m{^ \s* (\S+) (?: \s+ \( \s* (\S*) \s* \) )? \s* $}x
+                      ? [ $1, $2 ]
+                      : [$_]
+                } @{ $actopts{iformat} };
+                $documentation->{$method}->{iformats} = \%formats;
             }
 
-        }
-
-        delete $cfg->{captvar};
-        delete $cfg->{chain};
-
-        ### single ###
-        $cfg->{scope} = 'single';
-        $cfg->{chain} = delete $options{chain};
-        if ( exists $options{single} ) {
-            my $sub = delete $options{single};
-            $cfg->{prefix} = qr{ /+ \Q$single\E }xsi;
-            $cfg->{path}   = "/$single";
-            $sub->();
-            delete $cfg->{prefix};
-            delete $cfg->{path};
-        }
-
-        foreach my $method (qw(create)) {
-            if ( exists $options{$method} ) {
-                $cfg->{method} = $method;
-                my $coderef =
-                  _getsub( $resources, $method, delete $options{$method},
-                    $options{caller} );
-                my $doc     = _get_documentation($coderef);
-                my %actopts = _get_attributes($coderef);
-
-                my $lfmtregex = $fmtregex;
-
-                $documentation->{$method} = {
-                    %$doc,
-                    Path  => "$pathbase/$single.{format}",
-                    PathP => "$pathbase/$single.${method}p?{callback}",
-                    hasid => 0,
-                    opts  => \%actopts,
-                  }
-                  if $doc;
-
-                if ( $doc and exists $actopts{iformat} ) {
-                    my %formats = map { ( $_->[0] => $_->[1] || undef ) } map {
-                        m{^ \s* (\S+) (?: \s+ \( \s* (\S*) \s* \) )? \s* $}x
-                          ? [ $1, $2 ]
-                          : [$_]
-                    } @{ $actopts{iformat} };
-                    $documentation->{$method}->{iformats} = \%formats;
-                }
-
-                if ( exists $actopts{oformat} ) {
-                    my %formats = map { ( $_->[0] => $_->[1] || undef ) } map {
-                        m{^ \s* (\S+) (?: \s+ \( \s* (\S*) \s* \) )? \s* $}x
-                          ? [ $1, $2 ]
-                          : [$_]
-                    } @{ $actopts{oformat} };
-                    my @formats = keys %formats;
-                    $lfmtregex = join '|' => map quotemeta, @formats;
-                    $lfmtregex = qr{(?:$lfmtregex)}x;
-                    if ($doc) {
-                        $documentation->{$method}->{oformats} = \%formats;
-                        if ( @formats == 1 ) {
-                            $documentation->{$method}->{Path} =~
-                              s{\Q{format}\E}{$formats[0]}egi;
-                        }
+            if ( exists $actopts{oformat} ) {
+                my %formats = map { ( $_->[0] => $_->[1] || undef ) } map {
+                    m{^ \s* (\S+) (?: \s+ \( \s* (\S*) \s* \) )? \s* $}x
+                      ? [ $1, $2 ]
+                      : [$_]
+                } @{ $actopts{oformat} };
+                my @formats = keys %formats;
+                $lfmtregex = join '|' => map quotemeta, @formats;
+                $lfmtregex = qr{(?:$lfmtregex)}x;
+                if ($doc) {
+                    $documentation->{$method}->{oformats} = \%formats;
+                    if ( @formats == 1 ) {
+                        $documentation->{$method}->{Path} =~
+                          s{\Q{format}\E}{$formats[0]}egi;
                     }
                 }
+            }
 
-                my $sub = _build_sub(
-                    $dsl,
-                    $method => $coderef,
-                    schema  => delete( $actopts{schema} )
-                );
-                $add_route->(
-                    qr{
+            my $sub = _build_sub(
+                $dsl,
+                $method => $coderef,
+                schema  => delete( $actopts{schema} )
+            );
+            $add_route->(
+                qr{
                         /+ \Q$single\E
                         (?:/+|\.(?<format>$lfmtregex))
                     }xs,
-                    $method,
-                    $sub,
-                );
-                if ( $options{jsonp} and not exists $actopts{format} ) {
-                    $dsl->app->add_route(
-                        regexp => qr{^
+                $method,
+                $sub,
+            );
+            if ( $options{jsonp} and not exists $actopts{format} ) {
+                $dsl->app->add_route(
+                    regexp => qr{^
                             $prefix
                             /+ \Q$single\E
                             \.(?<format>${method}p)
                         $}xsi,
-                        method  => 'get',
-                        options => {},
-                        code    => $sub
-                    );
-                }
-                else {
-                    delete $documentation->{$method}->{PathP} if $doc;
-                }
-                delete $cfg->{method};
+                    method  => 'get',
+                    options => {},
+                    code    => $sub
+                );
+            }
+            else {
+                delete $documentation->{$method}->{PathP} if $doc;
+            }
+            delete $cfg->{method};
+        }
+
+    }
+
+    ### plural ###
+    $cfg->{scope} = 'plural';
+    if ( exists $options{plural} ) {
+        my $sub = delete $options{plural};
+        $cfg->{prefix} = qr{ /+ \Q$plural\E }xsi;
+        $cfg->{path}   = "/$plural";
+        $sub->();
+        delete $cfg->{prefix};
+        delete $cfg->{path};
+    }
+
+    foreach my $method (qw(index)) {
+        if ( exists $options{$method} ) {
+            $cfg->{method} = $method;
+            my $coderef =
+              _getsub( $resources, $method, delete $options{$method},
+                $options{caller} );
+            my $doc     = _get_documentation($coderef);
+            my %actopts = _get_attributes($coderef);
+
+            my $lfmtregex = $fmtregex;
+
+            $documentation->{$method} = {
+                %$doc,
+                Path  => "$pathbase/$plural.{format}",
+                PathP => "$pathbase/$plural.${method}p?{callback}",
+                hasid => 0,
+                opts  => \%actopts,
+              }
+              if $doc;
+
+            if ( $doc and exists $actopts{iformat} ) {
+                my %formats = map { ( $_->[0] => $_->[1] || undef ) } map {
+                    m{^ \s* (\S+) (?: \s+ \( \s* (\S*) \s* \) )? \s* $}x
+                      ? [ $1, $2 ]
+                      : [$_]
+                } @{ $actopts{iformat} };
+                $documentation->{$method}->{iformats} = \%formats;
             }
 
-        }
-
-        ### plural ###
-        $cfg->{scope} = 'plural';
-        if ( exists $options{plural} ) {
-            my $sub = delete $options{plural};
-            $cfg->{prefix} = qr{ /+ \Q$plural\E }xsi;
-            $cfg->{path}   = "/$plural";
-            $sub->();
-            delete $cfg->{prefix};
-            delete $cfg->{path};
-        }
-
-        foreach my $method (qw(index)) {
-            if ( exists $options{$method} ) {
-                $cfg->{method} = $method;
-                my $coderef =
-                  _getsub( $resources, $method, delete $options{$method},
-                    $options{caller} );
-                my $doc     = _get_documentation($coderef);
-                my %actopts = _get_attributes($coderef);
-
-                my $lfmtregex = $fmtregex;
-
-                $documentation->{$method} = {
-                    %$doc,
-                    Path  => "$pathbase/$plural.{format}",
-                    PathP => "$pathbase/$plural.${method}p?{callback}",
-                    hasid => 0,
-                    opts  => \%actopts,
-                  }
-                  if $doc;
-
-                if ( $doc and exists $actopts{iformat} ) {
-                    my %formats = map { ( $_->[0] => $_->[1] || undef ) } map {
-                        m{^ \s* (\S+) (?: \s+ \( \s* (\S*) \s* \) )? \s* $}x
-                          ? [ $1, $2 ]
-                          : [$_]
-                    } @{ $actopts{iformat} };
-                    $documentation->{$method}->{iformats} = \%formats;
-                }
-
-                if ( exists $actopts{oformat} ) {
-                    my %formats = map { ( $_->[0] => $_->[1] || undef ) } map {
-                        m{^ \s* (\S+) (?: \s+ \( \s* (\S*) \s* \) )? \s* $}x
-                          ? [ $1, $2 ]
-                          : [$_]
-                    } @{ $actopts{oformat} };
-                    my @formats = keys %formats;
-                    $lfmtregex = join '|' => map quotemeta, @formats;
-                    $lfmtregex = qr{(?:$lfmtregex)}x;
-                    if ($doc) {
-                        $documentation->{$method}->{oformats} = \%formats;
-                        if ( @formats == 1 ) {
-                            $documentation->{$method}->{Path} =~
-                              s{\Q{format}\E}{$formats[0]}egi;
-                        }
+            if ( exists $actopts{oformat} ) {
+                my %formats = map { ( $_->[0] => $_->[1] || undef ) } map {
+                    m{^ \s* (\S+) (?: \s+ \( \s* (\S*) \s* \) )? \s* $}x
+                      ? [ $1, $2 ]
+                      : [$_]
+                } @{ $actopts{oformat} };
+                my @formats = keys %formats;
+                $lfmtregex = join '|' => map quotemeta, @formats;
+                $lfmtregex = qr{(?:$lfmtregex)}x;
+                if ($doc) {
+                    $documentation->{$method}->{oformats} = \%formats;
+                    if ( @formats == 1 ) {
+                        $documentation->{$method}->{Path} =~
+                          s{\Q{format}\E}{$formats[0]}egi;
                     }
                 }
+            }
 
-                my $sub = _build_sub(
-                    $dsl,
-                    $method => $coderef,
-                    schema  => delete( $actopts{schema} )
-                );
-                $add_route->(
-                    qr{
+            my $sub = _build_sub(
+                $dsl,
+                $method => $coderef,
+                schema  => delete( $actopts{schema} )
+            );
+            $add_route->(
+                qr{
                         /+ \Q$plural\E
                         (?:/+|\.(?<format>$lfmtregex))
                     }xs,
-                    $method,
-                    $sub,
-                );
-                if ( $options{jsonp} and not exists $actopts{format} ) {
-                    $dsl->app->add_route(
-                        regexp => qr{^
+                $method,
+                $sub,
+            );
+            if ( $options{jsonp} and not exists $actopts{format} ) {
+                $dsl->app->add_route(
+                    regexp => qr{^
                             $prefix
                             /+ \Q$plural\E
                             \.(?<format>${method}p)
                         $}xsi,
-                        method  => 'get',
-                        options => {},
-                        code    => $sub
-                    );
-                }
-                else {
-                    delete $documentation->{$method}->{PathP} if $doc;
-                }
-                delete $cfg->{method};
+                    method  => 'get',
+                    options => {},
+                    code    => $sub
+                );
             }
-
+            else {
+                delete $documentation->{$method}->{PathP} if $doc;
+            }
+            delete $cfg->{method};
         }
 
-        delete $cfg->{scope};
-        delete $cfg->{chain};
-
-        pop @$stack;
-
-        foreach my $route ( keys %routes ) {
-            my $regexp = shift @{ $routes{$route} };
-            my @methods = map uc, @{ $routes{$route} };
-            push @routes => $dsl->app->add_route(
-                regexp  => $regexp,
-                method  => 'options',
-                options => {},
-                code    => sub {
-                    my $app = shift;
-                    $app->response->header( Allow => join ',', @methods );
-                }
-            );
-        }
-
-        if (@$stack) {
-            $documentation->{parent} = $stack->[-1]->{documentation};
-        }
-
-        push @$docstack => $documentation;
-
-        return @routes;
     }
-  ),
+
+    delete $cfg->{scope};
+    delete $cfg->{chain};
+
+    pop @$stack;
+
+    foreach my $route ( keys %routes ) {
+        my $regexp = shift @{ $routes{$route} };
+        my @methods = map uc, @{ $routes{$route} };
+        push @routes => $dsl->app->add_route(
+            regexp  => $regexp,
+            method  => 'options',
+            options => {},
+            code    => sub {
+                my $app = shift;
+                $app->response->header( Allow => join ',', @methods );
+            }
+        );
+    }
+
+    if (@$stack) {
+        $documentation->{parent} = $stack->[-1]->{documentation};
+    }
+
+    push @$docstack => $documentation;
+
+    return @routes;
+}
+
+register
+  resource => \&single_resource,
   { is_global => 1 };
 
 our %RAWDOC;
