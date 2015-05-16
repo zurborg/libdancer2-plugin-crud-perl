@@ -326,6 +326,23 @@ register resource => (
             delete $cfg->{path};
         }
 
+        if ( exists $options{dispatch} ) {
+            my $dispatch = delete $options{dispatch};
+            my @dispatch;
+            if ( ref $dispatch eq 'ARRAY' ) {
+                @dispatch = @$dispatch;
+            }
+            elsif ( defined $dispatch and not ref $dispatch ) {
+                @dispatch = map { s{\s+}{}gr } split /,+/, $dispatch;
+            }
+            else {
+                croak "unknown reftype for dispatch: " . ref($dispatch);
+            }
+            foreach my $method (@dispatch) {
+                $options{$method} //= 'dispatch';
+            }
+        }
+
         foreach my $method (qw(read update patch delete)) {
             if ( exists $options{$method} ) {
                 $cfg->{method} = $method;
@@ -1104,6 +1121,17 @@ Instead of providing a CodeRef as an action handler, the keyword L<dispatch> ena
 
             );
         }
+    );
+
+Or using an ArrayRef:
+
+    resource('foo_bar',
+        
+        # dispatches to ::read_action and ::update_action
+        dispatch => [qw[ read update ]],
+        
+        # same, but with comma-separated string
+        dispatch => 'read,update',
     );
 
 =head2 HANDLE HEAD REQUEST
