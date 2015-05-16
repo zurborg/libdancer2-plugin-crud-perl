@@ -73,6 +73,8 @@ sub _get_attributes {
 sub _set_serializer {
     my ( $app, $serializer ) = @_;
 
+    return unless ref $app->response;
+
     my $cur = $app->response->serializer;
 
     if ( defined $serializer and not ref $serializer ) {
@@ -110,6 +112,8 @@ sub _set_serializer {
 
 sub _throw {
     my ( $app, $message, $status ) = @_;
+
+    die $message unless ref $app->response;
 
     my $serializer = $app->response->serializer;
 
@@ -154,13 +158,19 @@ sub _build_sub {
         my %params   = map { ( $_ => $captures->{$_} ) } @captures;
 
         eval {
-            my $serializer = $app->response->serializer;
-            if (   !$opts{dont_serialize}
-                and $serializer
-                and not $app->request->has_serializer )
-            {
-                $app->request->{data} =
-                  $serializer->deserialize( $app->request->body );
+            my $resp = $app->response;
+            if ( ref $resp ) {
+                my $serializer = $resp->serializer;
+                if (   !$opts{dont_serialize}
+                    and $serializer
+                    and not $app->request->has_serializer )
+                {
+                    $app->request->{data} =
+                      $serializer->deserialize( $app->request->body );
+                }
+            }
+            else {
+                $app->request->{data} = undef;
             }
 
             foreach my $captvar ( keys %validations ) {
@@ -721,9 +731,11 @@ register define_serializer => (
         $options{extensions} //= [ lc $module ];
         $options{mime_types} //= [ 'application/x-' . lc($module) ];
         my $name = blessed $module;
-        if (defined $name) {
-            die "$name is not a member of the Dancer2 serializer role" unless $module->isa('Dancer2::Core::Role::Serializer');
-        } else {
+        if ( defined $name ) {
+            die "$name is not a member of the Dancer2 serializer role"
+              unless $module->isa('Dancer2::Core::Role::Serializer');
+        }
+        else {
             $name = "Dancer2::Serializer::$module";
         }
         foreach my $extension ( @{ delete $options{extensions} } ) {
