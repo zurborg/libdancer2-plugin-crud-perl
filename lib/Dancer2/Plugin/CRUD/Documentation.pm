@@ -5,9 +5,6 @@ package Dancer2::Plugin::CRUD::Documentation;
 # ABSTRACT: Use attributes to declare API blueprint documentation for CRUD applications
 
 use Attribute::Handlers;
-use JSON         ();
-use YAML::Any    ();
-use Data::Dumper ();
 
 # VERSION
 
@@ -34,6 +31,15 @@ sub _get_attr_doc {
     return @{ $Stash->{$referent} };
 }
 
+1;
+
+__END__
+
+use JSON         ();
+use YAML::Any    ();
+use Data::Dumper ();
+use Text::API::Blueprint qw(:all);
+
 sub _rpl {
     my ( $re, $str, $rpl ) = @_;
     $rpl //= '';
@@ -42,7 +48,7 @@ sub _rpl {
     return $str;
 }
 
-sub _trim {
+sub _trim(_) {
     _rpl( qr{\s+}, shift() );
 }
 
@@ -72,6 +78,16 @@ sub _arrayhash {
     return %hash;
 }
 
+sub _mkheaderhash {
+    my $str = shift;
+    
+    my @lines = map _trim, grep m{\S}, split /\n+/ => $str;
+    
+    my %headers = map { map _trim, split /:/, 2 } @lines;
+    
+    return \%headers;
+}
+
 =func generate_apiblueprint ($docstack, %options)
 
 For internal use only.
@@ -80,12 +96,7 @@ For internal use only.
 
 sub generate_apiblueprint {
     my ( $docstack, %options ) = @_;
-
-    my $doc = "FORMAT: 1A\n\n";
-    $doc .= "# " . $options{name} . "\n\n" if exists $options{name};
-    $doc .= $options{intro} . "\n\n" if exists $options{intro};
-    my $json = JSON->new->utf8->pretty->allow_nonref;
-    my $yaml = \&YAML::Any::Dump;
+    
     my $dump = sub {
         local $Data::Dumper::Purity = 1;
         local $Data::Dumper::Terse  = 1;
@@ -104,377 +115,182 @@ sub generate_apiblueprint {
 
     my $prefix = $options{prefix} || '';
 
-    while ( my $resource = pop @$docstack ) {
-        my $name = $resource->{name};
-        $doc .= "# Group $name\n\n";
-        $doc .= $resource->{intro} . "\n\n" if $resource->{intro};
+    my $doc = Section(sub {
+        
+        Meta();
+        
+        Intro($options{name}, $options{intro});
+        
+        while ( my $resource = pop @$docstack ) {
 
-        if (0) {    # walk through parents
-            my $node = $resource;
-            while ( exists $node->{parent} ) {
-                $node = $node->{parent};
-            }
-        }
-
-        my $rupd  = 0;
-        my $lastp = '';
-
-        my %pathmap = _arrayhash(
-            map { ( $resource->{$_}->{Path} => $_ ) }
-              grep { exists $resource->{$_} }
-              qw(index create read update patch delete)
-        );
-
-        foreach my $trigger (qw(index create read update patch delete)) {
-            next unless exists $resource->{$trigger};
-
-            #$dsl->debug(" $name # $trigger ");
-
-            my $method = $methods{$trigger};
-            my $action = $resource->{$trigger};
-            my $path   = $prefix . $action->{Path};
-
-            if ( $lastp ne $path ) {
-                my $triggers = join ' ' => map ucfirst,
-                  @{ $pathmap{ $action->{Path} } };
-                $doc .= "## $triggers [$path]\n\n";
-                $lastp = "$path";
-            }
-
-            $doc .= "### " . ucfirst($trigger) . " [$method]\n\n";
-
-            if ( exists $action->{description} ) {
-                my $desc = _flatten( $action->{description}->[0] );
-                $doc .= "$desc\n\n";
-            }
-
-            $doc .= "+ Parameters\n\n";
-
-            my @oformats = qw(json yaml dump);
-            if ( exists $action->{PathP} ) {
-                push @oformats => $trigger . 'p';
-            }
-
-            if ( exists $action->{oformats} ) {
-                @oformats = keys %{ $action->{oformats} };
-            }
-            if ( @oformats > 1 ) {
-                $doc .= "    + format (required, string)\n\n";
-                $doc .= "        + Values\n\n";
-                foreach my $format (@oformats) {
-                    $doc .= "            + `$format`\n";
+            Group($resource->{name}, $resource->{intro});
+    
+            my $lastp = '';
+    
+            my %pathmap = _arrayhash(
+                map { ( $resource->{$_}->{Path} => $_ ) }
+                  grep { exists $resource->{$_} }
+                  qw(index create read update patch delete)
+            );
+    
+            foreach my $trigger (qw(index create read update patch delete)) {
+                next unless exists $resource->{$trigger};
+    
+                my $method = $methods{$trigger};
+                my $action = $resource->{$trigger};
+                my $path   = $prefix . $action->{Path};
+    
+                if ( $lastp ne $path ) {
+                    my $triggers = join ' ' => map ucfirst,
+                      @{ $pathmap{ $action->{Path} } };
+                    Resource(identifier => $trigger, uri => $path);
+                    $lastp = "$path";
                 }
-            }
-            $doc .= "\n";
-
-            if ( $action->{hasid} ) {
-                $doc .=
-                    "    + "
-                  . $resource->{captvar}
-                  . " (required, "
-                  . $resource->{idtype} . ")\n";
-                $doc .= "\n";
-            }
-
-            my $request_body;
-            if ( exists $action->{request_body} ) {
-                $request_body = $action->{request_body}->[0];
-            }
-
-            my $request_headers;
-            if ( exists $action->{request_headers} ) {
-                $request_headers = _trim( $action->{request_headers}->[0] );
-                $request_headers =~ s{\s*(\r?\n)\s*}{$1}eg;
-            }
-
-            my $response_body;
-            if ( exists $action->{response_body} ) {
-                $response_body = $action->{response_body}->[0];
-            }
-
-            my $response_headers;
-            if ( exists $action->{response_headers} ) {
-                $response_headers = _trim( $action->{response_headers}->[0] );
-                $response_headers =~ s{\s*(\r?\n)\s*}{$1}eg;
-            }
-
-            my $request_schema;
-            if ( exists $action->{request_schema} ) {
-                my $x = $action->{request_schema}->[0];
-                $request_schema = $json->encode($x);
-            }
-
-            my $response_schema;
-            if ( exists $action->{response_schema} ) {
-                $response_schema =
-                  $json->encode( $action->{response_schema}->[0] );
-            }
-
-            if ( exists $action->{oformats} ) {
-                foreach my $fmt ( keys %{ $action->{oformats} } ) {
-
-                    my $ctype = $action->{oformats}->{$fmt} || next;
-
-                    $doc .= "+ Request $fmt ($ctype)\n\n";
-                    if ( my $npath = ( $path =~ s{\Q{format}\E}{$fmt}re ) ) {
-                        $doc .= "    + `$npath`\n\n";
-                    }
-                    if ( $request_headers or $request_body ) {
-                        $doc .=
-                          _indent(
-                            "+ Headers\n\n" . _indent( $request_headers, 8 ) )
-                          . "\n\n"
-                          if $request_headers;
-                        $doc .=
-                          _indent( "+ Body\n\n" . _indent( $request_body, 8 ) )
-                          . "\n\n"
-                          if $request_body;
-                        $doc .=
-                          _indent(
-                            "+ Schema\n\n" . _indent( $request_schema, 8 ) )
-                          . "\n\n"
-                          if $request_schema;
-                    }
-                    else {
-                        $doc .=
-                          _indent( "+ Body\n\n" . _indent( "(no content)", 8 ) )
-                          . "\n\n";
-                    }
-
-                    if ( $response_headers or $response_body ) {
-                        $doc .= "+ Response 200 ($ctype)\n\n";
-                        $doc .=
-                          _indent(
-                            "+ Headers\n\n" . _indent( $response_headers, 8 ) )
-                          . "\n\n"
-                          if $response_headers;
-                        $doc .=
-                          _indent( "+ Body\n\n" . _indent( $response_body, 8 ) )
-                          . "\n\n"
-                          if $response_body;
-                        $doc .=
-                          _indent(
-                            "+ Schema\n\n" . _indent( $response_schema, 8 ) )
-                          . "\n\n"
-                          if $response_schema;
-                    }
-                    else {
-                        $doc .=
-                          "+ Response 200 ($ctype)\n\n        no body\n\n";
-                    }
-
+    
+                Action(identifier => ucfirst($trigger), method => $method);
+    
+                if ( exists $action->{description} ) {
+                    Text($action->{description}->[0]);
                 }
+                
+                my %parameters;
 
-            }
-            else {
-
-                $doc .= "+ Request JSON (application/json)\n\n";
-                if ( my $npath = ( $path =~ s{\Q{format}\E}{json}r ) ) {
-                    $doc .= "    + `$npath`\n\n";
-                }
-                if ( $request_headers or $request_body ) {
-                    $doc .=
-                      _indent(
-                        "+ Headers\n\n" . _indent( $request_headers, 8 ) )
-                      . "\n\n"
-                      if $request_headers;
-                    $doc .=
-                      _indent( "+ Body\n\n"
-                          . _indent( $json->encode($request_body), 8 ) )
-                      . "\n\n"
-                      if $request_body;
-                    $doc .=
-                      _indent( "+ Schema\n\n" . _indent( $request_schema, 8 ) )
-                      . "\n\n"
-                      if $request_schema;
-                }
-                else {
-                    $doc .=
-                      _indent( "+ Body\n\n" . _indent( "// (no content)", 8 ) )
-                      . "\n\n";
-                }
-
-                if ( $response_headers or $response_body ) {
-                    $doc .= "+ Response 200 (application/json)\n\n";
-                    $doc .=
-                      _indent(
-                        "+ Headers\n\n" . _indent( $response_headers, 8 ) )
-                      . "\n\n"
-                      if $response_headers;
-                    $doc .=
-                      _indent( "+ Body\n\n"
-                          . _indent( $json->encode($response_body), 8 ) )
-                      . "\n\n"
-                      if $response_body;
-                    $doc .=
-                      _indent( "+ Schema\n\n" . _indent( $response_schema, 8 ) )
-                      . "\n\n"
-                      if $response_schema;
-                }
-                else {
-                    $doc .=
-"+ Response 200 (application/json)\n\n        // no body\n\n";
-                }
-
-                $doc .= "+ Request YAML (text/x-yaml)\n\n";
-                if ( my $npath = ( $path =~ s{\Q{format}\E}{yml}r ) ) {
-                    $doc .= "    + `$npath`\n\n";
-                }
-                if ( $request_headers or $request_body ) {
-                    $doc .=
-                      _indent(
-                        "+ Headers\n\n" . _indent( $request_headers, 8 ) )
-                      . "\n\n"
-                      if $request_headers;
-                    $doc .=
-                      _indent(
-                        "+ Body\n\n" . _indent( $yaml->($request_body), 8 ) )
-                      . "\n\n"
-                      if $request_body;
-                    $doc .=
-                      _indent( "+ Schema\n\n" . _indent( $request_schema, 8 ) )
-                      . "\n\n"
-                      if $request_schema;
-                }
-                else {
-                    $doc .=
-                      _indent( "+ Body\n\n" . _indent( "# (no content)", 8 ) )
-                      . "\n\n";
-                }
-
-                if ( $response_headers or $response_body ) {
-                    $doc .= "+ Response 200 (text/x-yaml)\n\n";
-                    $doc .=
-                      _indent(
-                        "+ Headers\n\n" . _indent( $response_headers, 8 ) )
-                      . "\n\n"
-                      if $response_headers;
-                    $doc .=
-                      _indent(
-                        "+ Body\n\n" . _indent( $yaml->($response_body), 8 ) )
-                      . "\n\n"
-                      if $response_body;
-                    $doc .=
-                      _indent( "+ Schema\n\n" . _indent( $response_schema, 8 ) )
-                      . "\n\n"
-                      if $response_schema;
-                }
-                else {
-                    $doc .=
-                      "+ Response 200 (text/x-yaml)\n\n        # no body\n\n";
-                }
-
-                $doc .= "+ Request DUMP (text/x-perl)\n\n";
-                if ( my $npath = ( $path =~ s{\Q{format}\E}{dump}r ) ) {
-                    $doc .= "    + `$npath`\n\n";
-                }
-                if ( $request_headers or $request_body ) {
-                    $doc .=
-                      _indent(
-                        "+ Headers\n\n" . _indent( $request_headers, 8 ) )
-                      . "\n\n"
-                      if $request_headers;
-                    $doc .=
-                      _indent(
-                        "+ Body\n\n" . _indent( $dump->($request_body), 8 ) )
-                      . "\n\n"
-                      if $request_body;
-                    $doc .=
-                      _indent( "+ Schema\n\n" . _indent( $request_schema, 8 ) )
-                      . "\n\n"
-                      if $request_schema;
-                }
-                else {
-                    $doc .=
-                      _indent( "+ Body\n\n" . _indent( "# (no content)", 8 ) )
-                      . "\n\n";
-                }
-
-                if ( $response_headers or $response_body ) {
-                    $doc .= "+ Response 200 (text/x-perl)\n\n";
-                    $doc .=
-                      _indent(
-                        "+ Headers\n\n" . _indent( $response_headers, 8 ) )
-                      . "\n\n"
-                      if $response_headers;
-                    $doc .=
-                      _indent(
-                        "+ Body\n\n" . _indent( $dump->($response_body), 8 ) )
-                      . "\n\n"
-                      if $response_body;
-                    $doc .=
-                      _indent( "+ Schema\n\n" . _indent( $response_schema, 8 ) )
-                      . "\n\n"
-                      if $response_schema;
-                }
-                else {
-                    $doc .=
-                      "+ Response 200 (text/x-perl)\n\n        # no body\n\n";
-                }
-
+                my @oformats = qw(json yaml dump);
                 if ( exists $action->{PathP} ) {
+                    push @oformats => $trigger . 'p';
+                }
+                if ( exists $action->{oformats} ) {
+                    @oformats = keys %{ $action->{oformats} };
+                }
+                if ( @oformats > 1 ) {
+                    $parameters{format} = {
+                        required => 1,
+                        enum => 'string',
+                        members => \@oformats
+                    };
+                }
+    
+                if ( $action->{hasid} ) {
+                    $parameters{$resource->{captvar}} = {
+                        required => 1,
+                        type => $resource->{idtype},
+                    };
+                }
 
-                    $doc .= "+ Request JSONP\n\n";
-                    if ( my $npath =
-                        ( $path =~ s{\Q{format}\E}{${trigger}p}r ) )
-                    {
-                        $doc .=
-                          "    + GET `$npath" . "{?callback,headers,data}`\n\n";
+                Parameters(%parameters);
+
+                my $request_body;
+                if ( exists $action->{request_body} ) {
+                    $request_body = $action->{request_body}->[0];
+                }
+    
+                my $request_headers;
+                if ( exists $action->{request_headers} ) {
+                    $request_headers = _trim( $action->{request_headers}->[0] );
+                    $request_headers = _mkheaderhash($request_headers);
+                }
+    
+                my $response_body;
+                if ( exists $action->{response_body} ) {
+                    $response_body = $action->{response_body}->[0];
+                }
+    
+                my $response_headers;
+                if ( exists $action->{response_headers} ) {
+                    $response_headers = _trim( $action->{response_headers}->[0] );
+                    $response_headers = _mkheaderhash($response_headers);
+                }
+
+                my $request_schema;
+                if ( exists $action->{request_schema} ) {
+                    $request_schema = $json->encode($action->{request_schema}->[0]);
+                }
+
+                my $response_schema;
+                if ( exists $action->{response_schema} ) {
+                    $response_schema = $json->encode($action->{response_schema}->[0]);
+                }
+
+                if ( exists $action->{oformats} ) {
+                    foreach my $fmt ( keys %{ $action->{oformats} } ) {
+    
+                        my $ctype = $action->{oformats}->{$fmt} || next;
+                        
+                        my $npath = ($path =~ s{\Q{format}\E}{$fmt}re);
+
+                        Request($fmt,
+                            type => $ctype,
+                            (description => "`$npath`")x!!$npath,
+                            headers => $request_headers,
+                            body => $request_body,
+                            schema => $request_schema
+                        );
+                        
+                        Response(200,
+                            type => $ctype,
+                            headers => $response_headers,
+                            body => $response_body,
+                            schema => $response_schema,
+                        )
+
                     }
 
-                    $doc .=
-                      _indent( "+ Body\n\n" . _indent( "// (no content)", 8 ) )
-                      . "\n\n";
+                } else {
 
-                    $doc .= "+ Response 200 (text/javascript)\n\n";
-                    $doc .= _indent(
-                        "+ Body\n\n"
-                          . _indent(
-                            "callback(\n"
-                              . _indent( $json->encode($response_body) )
-                              . "\n)",
-                            8
-                          )
-                      )
-                      . "\n\n"
-                      if $response_body;
-                    $doc .=
-                      _indent( "+ Schema\n\n" . _indent( $response_schema, 8 ) )
-                      . "\n\n"
-                      if $response_schema;
+                    Request('JSON',
+                        type => 'application/json',
+                        (description => "`$npath`")x!!$npath,
+                        headers => $request_headers,
+                        json => $request_body,
+                        schema => $request_schema,
+                    )
+
+                    Response(200,
+                        type => 'application/json',
+                        headers => $response_headers,
+                        json => $response_body,
+                        schema => $response_schema,
+                    )
+
+                    Request('YAML',
+                        type => 'application/yaml',
+                        (description => "`$npath`")x!!$npath,
+                        headers => $request_headers,
+                        yaml => $request_body,
+                        schema => $request_schema,
+                    )
+
+                    Response(200,
+                        type => 'application/yaml',
+                        headers => $response_headers,
+                        yaml => $response_body,
+                        schema => $response_schema,
+                    )
+
+                    Request('DUMP',
+                        type => 'application/perl',
+                        (description => "`$npath`")x!!$npath,
+                        headers => $request_headers,
+                        code => $dump->($request_body),
+                        lang => 'perl',
+                        schema => $request_schema,
+                    )
+
+                    Response(200,
+                        type => 'application/perl',
+                        headers => $response_headers,
+                        code => $dump->($response_body),
+                        lang => 'perl',
+                        schema => $response_schema,
+                    )
 
                 }
 
             }
 
-            if (0) {
-
-                # TODO
-
-                $doc .= "## GET [" . $action->{PathP} . "]\n";
-                $doc .= "JSONP equalivent $trigger method for `$method "
-                  . $action->{Path} . "`\n\n";
-
-                $doc .= "+ Parameters\n\n";
-                $doc .= "    + callback (required, string) \n\n";
-                $doc .= "\n";
-                if ( $action->{hasid} ) {
-                    $doc .= "    + id (required, any)\n";
-                    $doc .= "\n";
-                }
-
-                $doc .= "+ Response 200 (text/javascript)\n\n";
-                $doc .=
-                  _indent( "callback(\n"
-                      . _indent( $json->encode($response_body) )
-                      . "\n);" )
-                  . "\n\n"
-                  if $response_body;
-
-            }
         }
 
-    }
+    }, 0);
 
     $doc =~ s{(\r?\n)[\t ]+(\r?\n)}{$1.$2}eg;
     return $doc;
@@ -540,7 +356,7 @@ __END__
 
 This module enables attributes in order to generate an API blueprint markdown file, with all route handlers including information about I<:id> and I<:format> parameters. Example code for all formats are preformatted. Currently YAML, JSON and Dumper is supported.
 
-B<Important notice>: please keep in mind, that all parenthesis B<must> be balanced! This is a limitation in the perl parser, not only in this module.
+B<Important notice>: please keep in mind, that all parentheses B<must> be balanced! This is a limitation in the perl parser, not only in this module.
 
 =head1 SYNOPSIS
 
