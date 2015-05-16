@@ -246,6 +246,35 @@ sub _getsub {
     return \&$sub;
 }
 
+sub multi_resource;
+
+sub multi_resource {
+    my ( $dsl, $resources, %globals ) = @_;
+
+    foreach my $resource ( keys %$resources ) {
+        my $options = delete $resources->{$resource};
+        $options->{caller} //= $globals{caller};
+        if ( ref $options->{single} eq 'HASH' ) {
+            my $subopts = delete $options->{single};
+            $options->{single} = sub {
+                multi_resource( $dsl, $subopts, %globals );
+            };
+        }
+        if ( ref $options->{single_id} eq 'HASH' ) {
+            my $subopts = delete $options->{single_id};
+            $options->{single_id} = sub {
+                multi_resource( $dsl, $subopts, %globals );
+            };
+        }
+        if ( ref $options->{plural} eq 'HASH' ) {
+            my $subopts = delete $options->{plural};
+            $options->{plural} = sub {
+                multi_resource( $dsl, $subopts, %globals );
+            };
+        }
+        single_resource( $dsl, $resource, %$options );
+    }
+}
 
 sub single_resource;
 
@@ -254,6 +283,8 @@ sub single_resource {
 
     $options{caller} //= ( caller(1) )[0];
 
+    return multi_resource( $dsl, $resource, %options )
+      if ref $resource eq 'HASH';
 
     my ( $single, $plural ) = _pluralize($resource);
 
@@ -1154,6 +1185,23 @@ A HTTP I<HEAD> request behaves like a normal I<GET> request - instead that no bo
     );
 
 In other contexts where HEAD does not apply, like POST, PUT, DELETE, ..., the CodeRef will be executed everytime. So its recommended to use this feature only with I<index> and I<read> handlers.
+
+=head USING HASHREF CONFIG
+
+If the first argument to the I<resource> keyword is a HashRef, that will be used to define more resources at once.
+
+The I<single>, I<single_id> and I<plural> keyword accepts a HashRef too. 
+
+    resource({
+        foo => {
+            read => sub { ... },
+            single => { # HashRef instead of CodeRef
+                bar => {
+                    dispatch => [qw[ create delete ]],
+                },
+            }
+        }
+    });
 
 =head2 CROSS ORIGIN RESOURCE SHARING
 
