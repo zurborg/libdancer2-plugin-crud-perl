@@ -7,7 +7,7 @@ package Dancer2::Plugin::CRUD;
 use Dancer2::Plugin;
 use Carp qw(croak confess);
 use Sub::Name qw(subname);
-use Text::Pluralize ();
+use Text::Pluralize          ();
 use Class::Method::Modifiers ();
 use Class::Load qw(try_load_class);
 use Attribute::Handlers;

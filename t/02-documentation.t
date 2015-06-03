@@ -52,7 +52,7 @@ dotest(
         my $R = request( $PT, GET => '/doc1.md' );
         ok( $R->is_success );
         my $file = 't/doc1.md';
-        if ($ENV{CREATE_DOCUMENTATION}) {
+        if ( $ENV{CREATE_DOCUMENTATION} ) {
             open( APIMD, ">$file" ) or die "cannot write $file: $!";
             ok( print APIMD $R->content );
             close APIMD;
