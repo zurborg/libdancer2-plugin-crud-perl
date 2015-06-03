@@ -255,20 +255,32 @@ sub multi_resource {
         $options->{caller} //= $globals{caller};
         if ( ref $options->{single} eq 'HASH' ) {
             my $subopts = delete $options->{single};
+            my $before  = delete $subopts->{before};
+            my $after   = delete $subopts->{after};
             $options->{single} = sub {
+                $before->(%globals) if ref $before eq 'CODE';
                 multi_resource( $dsl, $subopts, %globals );
+                $after->(%globals) if ref $after eq 'CODE';
             };
         }
         if ( ref $options->{single_id} eq 'HASH' ) {
             my $subopts = delete $options->{single_id};
+            my $before  = delete $subopts->{before};
+            my $after   = delete $subopts->{after};
             $options->{single_id} = sub {
+                $before->(%globals) if ref $before eq 'CODE';
                 multi_resource( $dsl, $subopts, %globals );
+                $after->(%globals) if ref $after eq 'CODE';
             };
         }
         if ( ref $options->{plural} eq 'HASH' ) {
             my $subopts = delete $options->{plural};
+            my $before  = delete $subopts->{before};
+            my $after   = delete $subopts->{after};
             $options->{plural} = sub {
+                $before->(%globals) if ref $before eq 'CODE';
                 multi_resource( $dsl, $subopts, %globals );
+                $after->(%globals) if ref $after eq 'CODE';
             };
         }
         single_resource( $dsl, $resource, %$options );
@@ -1195,9 +1207,11 @@ The I<single>, I<single_id> and I<plural> keyword accepts a HashRef too.
         foo => {
             read => sub { ... },
             single => { # HashRef instead of CodeRef
+                before => sub { ... }, # CodeRef goes here, will be executed first
                 bar => {
                     dispatch => [qw[ create delete ]],
                 },
+                after => sub { ... }, # and here, too. Will be executed last
             }
         }
     });
