@@ -8,7 +8,6 @@ use Dancer2::Plugin;
 use Carp qw(croak confess);
 use Sub::Name qw(subname);
 use Text::Pluralize ();
-use feature qw(fc);
 use Class::Method::Modifiers ();
 use Class::Load qw(try_load_class);
 use Attribute::Handlers;
@@ -37,14 +36,14 @@ sub _concat {
     join '' => @_;
 }
 
-sub _fceq {
+sub _lceq {
     return unless @_ == 2;
-    fc( shift || '' ) eq fc( pop || '' );
+    lc( shift || '' ) eq lc( pop || '' );
 }
 
-sub _fcne {
+sub _lcne {
     return unless @_ == 2;
-    fc( shift || '' ) ne fc( pop || '' );
+    lc( shift || '' ) ne lc( pop || '' );
 }
 
 sub _camelize {
@@ -215,7 +214,7 @@ sub _build_sub {
         $data //= '';
 
         if ( ref $data eq 'CODE' ) {
-            return if _fceq( $app->request->method => 'HEAD' );
+            return if _lceq( $app->request->method => 'HEAD' );
             $data = $data->() || '';
         }
 
@@ -240,7 +239,7 @@ sub _getsub {
     return $sub if ref $sub eq 'CODE';
     die "handler for action $action not defined" unless defined $sub;
     die "unknown handler for action $action: $sub"
-      unless _fceq( $sub => 'dispatch' );
+      unless _lceq( $sub => 'dispatch' );
     map { $pkg .= '::' . _camelize($_) } @$resources;
     $sub = "${pkg}::${action}_action";
     return \&$sub;
@@ -298,7 +297,7 @@ sub single_resource {
         intro   => delete( $options{description} ),
     };
 
-    if ( _fcne( ref($idregex) => 'regexp' ) ) {
+    if ( _lcne( ref($idregex) => 'regexp' ) ) {
         $idregex = $RE{$idregex}
           || confess("unknown idregex type: $idregex");
     }
@@ -755,14 +754,14 @@ on_plugin_import {
                 if ( $format =~
                     m{^(index|read|create|update|patch|delete)p$}xsi )
                 {
-                    $dsl->params->{'method'} = fc($1);
+                    $dsl->params->{'method'} = lc($1);
                     $dsl->params->{'format'} = 'jsonp';
                     $format                  = $dsl->params->{'format'};
                     $serializer              = 'JSONP';
                 }
                 elsif ( $format =~ m{^([a-z0-9-_]+/[a-z0-9-_\+]+)(?:;.*)?$}xsi )
                 {
-                    $format = $type_to_fmt{ fc($1) } || $format;
+                    $format = $type_to_fmt{ lc($1) } || $format;
                 }
 
                 # TODO: Access:-field? (via HTTP::Negotiate)

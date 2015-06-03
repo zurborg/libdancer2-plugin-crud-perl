@@ -64,7 +64,7 @@ dotest(
     sub {
         my $R = request( $PT, GET => '/foo.txt' );
         ok( $R->is_success );
-        isfc( $R->content => 'foo' );
+        islc( $R->content => 'foo' );
     }
 );
 
@@ -73,7 +73,7 @@ dotest(
     sub {
         my $R = request( $PT, GET => '/foo/bar.txt' );
         ok( $R->is_success );
-        isfc( $R->content => 'foo_bar' );
+        islc( $R->content => 'foo_bar' );
     }
 );
 
@@ -82,7 +82,7 @@ dotest(
     sub {
         my $R = request( $PT, GET => '/foo/bar/baf.txt' );
         ok( $R->is_success );
-        isfc( $R->content => 'foo_bar_baf' );
+        islc( $R->content => 'foo_bar_baf' );
     }
 );
 
@@ -91,7 +91,7 @@ dotest(
     sub {
         my $R = request( $PT, GET => '/foo/bar/123/baz.txt' );
         ok( $R->is_success );
-        isfc( $R->content => 'foo_bar_baz' );
+        islc( $R->content => 'foo_bar_baz' );
     }
 );
 

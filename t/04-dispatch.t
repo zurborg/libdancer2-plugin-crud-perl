@@ -40,7 +40,7 @@ dotest(
     sub {
         my $R = request( $PT, GET => '/foo_xx.txt' );
         ok( $R->is_success );
-        isfc( $R->content => 'foo_xx' );
+        islc( $R->content => 'foo_xx' );
     }
 );
 
@@ -49,7 +49,7 @@ dotest(
     sub {
         my $R = request( $PT, GET => '/foo_xx/bar_yy.txt' );
         ok( $R->is_success );
-        isfc( $R->content => 'bar_yy' );
+        islc( $R->content => 'bar_yy' );
     }
 );
 

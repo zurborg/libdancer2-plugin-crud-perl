@@ -156,7 +156,7 @@ dotest(
             sub {
                 my $R = request( $PT, GET => '/person/123/single_id' );
                 ok( $R->is_success );
-                isfc( $R->content => 'single_id' );
+                islc( $R->content => 'single_id' );
             }
         );
         dotest(
@@ -164,7 +164,7 @@ dotest(
             sub {
                 my $R = request( $PT, GET => '/person/single' );
                 ok( $R->is_success );
-                isfc( $R->content => 'single' );
+                islc( $R->content => 'single' );
             }
         );
         dotest(
@@ -172,7 +172,7 @@ dotest(
             sub {
                 my $R = request( $PT, GET => '/persons/plural' );
                 ok( $R->is_success );
-                isfc( $R->content => 'plural' );
+                islc( $R->content => 'plural' );
             }
         );
     }
@@ -208,7 +208,7 @@ dotest(
     sub {
         my $R = request( $PT, GET => '/image.png' );
         ok( $R->is_success );
-        isfc( $R->content => 'this_is_not_an_image' );
+        islc( $R->content => 'this_is_not_an_image' );
     }
 );
 
@@ -218,7 +218,7 @@ dotest(
         my $R = request( $PT, GET => '/status.json' );
         ok( $R->is_success );
         is( $R->code => 202 );
-        isfc( $R->content => '["ok"]' );
+        islc( $R->content => '["ok"]' );
     }
 );
 

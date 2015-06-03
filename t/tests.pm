@@ -3,7 +3,6 @@ use Test::Most qw(!pass);
 use Plack::Test;
 use HTTP::Request::Common ();
 use Class::Load qw(try_load_class);
-use feature qw(fc);
 
 sub soft_require {
     foreach my $class (@_) {
@@ -19,19 +18,19 @@ sub soft_require {
     }
 }
 
-sub isfc {
-    @_ = map { defined($_) ? fc($_) : undef } @_;
+sub islc {
+    @_ = map { defined($_) ? lc($_) : undef } @_;
     goto &is;
 }
 
-sub isntfc {
-    @_ = map { defined($_) ? fc($_) : undef } @_;
+sub isntlc {
+    @_ = map { defined($_) ? lc($_) : undef } @_;
     goto &isnt;
 }
 
 sub header {
     my ( $R, $V ) = @_;
-    return $R->header( fc($V) ) || undef;
+    return $R->header( lc($V) ) || undef;
 }
 
 sub boot {
