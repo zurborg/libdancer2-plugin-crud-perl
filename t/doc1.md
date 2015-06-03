@@ -64,9 +64,9 @@ D 1
 
     + Body
 
-            --- 
+            ---
             - F
-            - 1
+            - '1'
 
 
 + Response 200 (text/x-yaml)
@@ -77,9 +77,9 @@ D 1
 
     + Body
 
-            --- 
+            ---
             - I
-            - 1
+            - '1'
 
 
 + Request DUMP (text/x-perl)
@@ -168,9 +168,9 @@ D 2
 
     + Body
 
-            --- 
+            ---
             - F
-            - 2
+            - '2'
 
 
 + Response 200 (text/x-yaml)
@@ -181,9 +181,9 @@ D 2
 
     + Body
 
-            --- 
+            ---
             - I
-            - 2
+            - '2'
 
 
 + Request DUMP (text/x-perl)
@@ -274,9 +274,9 @@ D 3
 
     + Body
 
-            --- 
+            ---
             - F
-            - 3
+            - '3'
 
 
 + Response 200 (text/x-yaml)
@@ -287,9 +287,9 @@ D 3
 
     + Body
 
-            --- 
+            ---
             - I
-            - 3
+            - '3'
 
 
 + Request DUMP (text/x-perl)
@@ -378,9 +378,9 @@ D 4
 
     + Body
 
-            --- 
+            ---
             - F
-            - 4
+            - '4'
 
 
 + Response 200 (text/x-yaml)
@@ -391,9 +391,9 @@ D 4
 
     + Body
 
-            --- 
+            ---
             - I
-            - 4
+            - '4'
 
 
 + Request DUMP (text/x-perl)
@@ -482,9 +482,9 @@ D 5
 
     + Body
 
-            --- 
+            ---
             - F
-            - 5
+            - '5'
 
 
 + Response 200 (text/x-yaml)
@@ -495,9 +495,9 @@ D 5
 
     + Body
 
-            --- 
+            ---
             - I
-            - 5
+            - '5'
 
 
 + Request DUMP (text/x-perl)
@@ -586,9 +586,9 @@ D 6
 
     + Body
 
-            --- 
+            ---
             - F
-            - 6
+            - '6'
 
 
 + Response 200 (text/x-yaml)
@@ -599,9 +599,9 @@ D 6
 
     + Body
 
-            --- 
+            ---
             - I
-            - 6
+            - '6'
 
 
 + Request DUMP (text/x-perl)
