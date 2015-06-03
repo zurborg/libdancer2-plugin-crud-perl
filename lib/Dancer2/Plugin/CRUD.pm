@@ -253,6 +253,12 @@ sub multi_resource {
     foreach my $resource ( keys %$resources ) {
         my $options = delete $resources->{$resource};
         $options->{caller} //= $globals{caller};
+
+        $options->{single_id} = delete $options->{prefix_id}
+          if exists $options->{prefix_id};
+        $options->{plural} = delete $options->{prefix}
+          if exists $options->{prefix};
+
         if ( ref $options->{single} eq 'HASH' ) {
             my $subopts = delete $options->{single};
             my $before  = delete $subopts->{before};
