@@ -358,6 +358,10 @@ sub single_resource {
 
     my $resources = [ map { $_->{single} } @$stack ];
 
+    $options{single_id} = delete $options{prefix_id}
+      if exists $options{prefix_id};
+    $options{plural} = delete $options{prefix} if exists $options{prefix};
+
     ### single_id ###
     $cfg->{scope}   = 'single_id';
     $cfg->{chain}   = delete $options{chain_id};
@@ -1068,6 +1072,8 @@ And whenever an action without an I<:id> param is called, these subroutine will 
 
 =item I<single_id>
 
+Alias: I<prefix_id>
+
 A prefix handler for defining other resources and routes under the I</singular_resource_name/:id> prefix.
 
     resource("foo",
@@ -1102,6 +1108,8 @@ A prefix handler for defining other resources and routes under the I</singular_r
 
 =item I<plural>
 
+Alias: I<prefix>
+
 A prefix handler for defining other resources and routes under the I</plural_resource_name> prefix.
 
     resource("foo(s)",
@@ -1111,6 +1119,8 @@ A prefix handler for defining other resources and routes under the I</plural_res
     )
 
 =back
+
+If you don't like the terms single and plural, you can use I<prefix> and I<prefix_id>, which overwrites I<plural> and I<single_id>. For many users it sounds more convenient.
 
 =method publish_apiblueprint ($path)
 
