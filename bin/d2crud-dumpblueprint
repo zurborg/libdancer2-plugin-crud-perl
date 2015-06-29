@@ -2,9 +2,13 @@
 
 # PODNAME: d2curd-dumpblueprint
 
+# ABSTRACT: Dump API blueprint from Dancer2 application
+
 use strict;
 use Getopt::Std;
 use Class::Load qw(try_load_class);
+
+# VERSION
 
 our $opt_I;
 getopts('I:');

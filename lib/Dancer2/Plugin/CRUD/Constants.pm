@@ -2,7 +2,11 @@ use strictures 1;
 
 package Dancer2::Plugin::CRUD::Constants;
 
+# ABSTRACT: Constants for L<Dancer2::Plugin::CRUD>
+
 use Exporter qw(import);
+
+# VERSION
 
 our @EXPORT_OK = qw(%ext_to_fmt %type_to_fmt %trigger_to_method %RE);
 our %EXPORT_TAGS = ( all => \@EXPORT_OK );
