@@ -14,6 +14,7 @@ use Attribute::Handlers;
 use Dancer2::Plugin::CRUD::Documentation ();
 use Dancer2::Plugin::CRUD::Constants qw(:all);
 use Scalar::Util qw(blessed);
+use Try::Tiny;
 
 # VERSION
 
@@ -151,12 +152,14 @@ sub _build_sub {
         $schema = undef;
     }
 
+    my $name = join '/' => map { $_->{single} } @$stack;
+
     return sub {
         my $app      = shift;
         my $captures = $app->request->captures || {};
         my %params   = map { ( $_ => $captures->{$_} ) } @captures;
 
-        eval {
+        try {
             my $resp = $app->response;
             if ( ref $resp ) {
                 my $serializer = $resp->serializer;
@@ -179,6 +182,7 @@ sub _build_sub {
                     my ( $text, $code ) = @error;
                     next unless defined $text;
                     $code //= 500;
+                    $dsl->debug("Error $code in $name: $text");
                     return _throw( $app, $text, $code );
                 }
             }
@@ -196,13 +200,23 @@ sub _build_sub {
                     return _throw( $app, $msg, 400 );
                 }
             }
+        }
+        catch {
+            $dsl->debug("Error in $name: $_");
+            _throw( $app, $_, 500 );
+            die "UNCAUGHT";
         };
-        return _throw( $app, $@, 500 ) if $@;
 
         my ( $code, $data );
 
-        eval { ( $code, $data ) = $sub->( $app, %params ); };
-        return _throw( $app, $@, 500 ) if $@;
+        try {
+            ( $code, $data ) = $sub->( $app, %params );
+        }
+        catch {
+            $dsl->debug("Error in $name: $_");
+            _throw( $app, $_, 500 );
+            die "UNCAUGHT";
+        };
 
         if ( defined $code and not ref $code and $code =~ m{^\d{3}$} ) {
             $app->response->status($code);
