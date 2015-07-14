@@ -83,7 +83,7 @@ sub _set_serializer {
             $serializer = $class->new;
         }
         else {
-            die _throw( $app, 'Unsupported Media Type', 415 );
+            _throw( $app, 415 => 'Unsupported Media Type' );
         }
     }
 
@@ -111,14 +111,15 @@ sub _set_serializer {
 }
 
 sub _throw {
-    my ( $app, $message, $status ) = @_;
+    my ( $app, $status, $message, %extras ) = @_;
 
     die $message unless ref $app->response;
 
     my $serializer = $app->response->serializer;
 
     my $err = Dancer2::Core::Error->new(
-        ( message => $message ),
+        %extras,
+        ( message    => $message ),
         ( app        => $app ),
         ( status     => $status ) x !!$status,
         ( serializer => $serializer ) x !!$serializer,
@@ -126,7 +127,7 @@ sub _throw {
 
     $app->has_with_return && $app->with_return->($err);
 
-    return $err;
+    die $err;
 }
 
 sub _build_sub {
@@ -183,7 +184,7 @@ sub _build_sub {
                     next unless defined $text;
                     $code //= 500;
                     $dsl->debug("Error $code in $name: $text");
-                    return _throw( $app, $text, $code );
+                    _throw( $app, $code => $text );
                 }
             }
 
@@ -197,14 +198,13 @@ sub _build_sub {
                 unless ($result) {
                     my $msg = join ', ',
                       map { $_->property . ': ' . $_->message } $result->errors;
-                    return _throw( $app, $msg, 400 );
+                    _throw( $app, 400 => $msg );
                 }
             }
         }
         catch {
             $dsl->debug("Error in $name: $_");
-            _throw( $app, $_, 500 );
-            die "UNCAUGHT";
+            _throw( $app, 500 => $_ );
         };
 
         my ( $code, $data );
@@ -214,8 +214,7 @@ sub _build_sub {
         }
         catch {
             $dsl->debug("Error in $name: $_");
-            _throw( $app, $_, 500 );
-            die "UNCAUGHT";
+            _throw( $app, 500 => $_ );
         };
 
         if ( defined $code and not ref $code and $code =~ m{^\d{3}$} ) {
@@ -738,8 +737,7 @@ register publish_apiblueprint => (
                     return $doc;
                 }
                 else {
-                    _throw( $app, "unsupported format requested: $format",
-                        404 );
+                    _throw( $app, 404 => "unsupported format requested: $format" );
                 }
             }
         );
@@ -836,6 +834,16 @@ register define_serializer => (
             $Dancer2::Plugin::CRUD::Constants::type_to_fmt{$mime_type} = $name;
         }
     }
+);
+
+register throw => (
+    sub {
+        my ($dsl, $status, $message) = @_;
+        my $app = $dsl->app;
+        _throw($app, $status => $message);
+        die 'UNCAUGHT';
+    },
+    { is_global => 1 }
 );
 
 register_plugin;
@@ -1141,6 +1149,12 @@ A prefix handler for defining other resources and routes under the I</plural_res
 =back
 
 If you don't like the terms single and plural, you can use I<prefix> and I<prefix_id>, which overwrites I<plural> and I<single_id>. For many users it sounds more convenient.
+
+=method throw ($status, $message)
+
+Exits the current route immediately and throw a L<Dancer2::Core::Error> object. The content of C<$message> will be serialized and the status code of C<$status> will be set in the response.
+
+Any code after this statement will be never executed.
 
 =method publish_apiblueprint ($path)
 
