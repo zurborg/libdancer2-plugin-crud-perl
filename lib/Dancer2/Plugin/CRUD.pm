@@ -830,7 +830,8 @@ register define_serializer => (
         foreach my $mime_type ( @{ delete $options{mime_types} } ) {
             $Dancer2::Plugin::CRUD::Constants::type_to_fmt{$mime_type} = $name;
         }
-    }
+    },
+    { is_global => 1 }
 );
 
 register throw => (
