@@ -71,7 +71,9 @@ sub _get_attributes {
 }
 
 sub _set_serializer {
-    my ( $app, $serializer ) = @_;
+    my ( $dsl, $serializer ) = @_;
+
+    my $app = $dsl->app;
 
     return unless ref $app->response;
 
@@ -83,7 +85,7 @@ sub _set_serializer {
             $serializer = $class->new;
         }
         else {
-            _throw( $app, 415 => 'Unsupported Media Type' );
+            _throw( $dsl, 415 => 'Unsupported Media Type' );
         }
     }
 
@@ -111,21 +113,21 @@ sub _set_serializer {
 }
 
 sub _throw {
-    my ( $app, $status, $message, %extras ) = @_;
+    my ( $dsl, $status, $message, %extras ) = @_;
 
     die $message unless ref $app->response;
 
-    my $serializer = $app->response->serializer;
+    my $serializer = $dsl->app->response->serializer;
 
     my $err = Dancer2::Core::Error->new(
         %extras,
         ( message    => $message ),
-        ( app        => $app ),
+        ( app        => $dsl->app ),
         ( status     => $status ) x !!$status,
         ( serializer => $serializer ) x !!$serializer,
     )->throw;
 
-    $app->has_with_return && $app->with_return->($err);
+    $dsl->app->has_with_return && $dsl->app->with_return->($err);
 
     die $err;
 }
@@ -184,7 +186,7 @@ sub _build_sub {
                     next unless defined $text;
                     $code //= 500;
                     $dsl->debug("Error $code in $name: $text");
-                    _throw( $app, $code => $text );
+                    _throw( $dsl, $code => $text );
                 }
             }
 
@@ -198,13 +200,13 @@ sub _build_sub {
                 unless ($result) {
                     my $msg = join ', ',
                       map { $_->property . ': ' . $_->message } $result->errors;
-                    _throw( $app, 400 => $msg );
+                    _throw( $dsl, 400 => $msg );
                 }
             }
         }
         catch {
             $dsl->debug("Error in $name: $_");
-            _throw( $app, 500 => $_ );
+            _throw( $dsl, 500 => $_ );
         };
 
         my @return;
@@ -214,7 +216,7 @@ sub _build_sub {
         }
         catch {
             $dsl->debug("Error in $name: $_");
-            _throw( $app, 500 => $_ );
+            _throw( $dsl, 500 => $_ );
         };
 
         if ( defined $return[0] and not ref $return[0] and $return[0] =~ m{^\d{3}$} ) {
@@ -732,7 +734,7 @@ register publish_apiblueprint => (
                     return $doc;
                 }
                 else {
-                    _throw( $app, 404 => "unsupported format requested: $format" );
+                    _throw( $dsl, 404 => "unsupported format requested: $format" );
                 }
             }
         );
@@ -775,7 +777,7 @@ on_plugin_import {
                 }
 
                 unless ($format) {
-                    return _set_serializer( $app, undef );
+                    return _set_serializer( $dsl, undef );
                 }
 
                 my $serializer;
@@ -798,12 +800,12 @@ on_plugin_import {
                 $serializer //= $ext_to_fmt{$format};
 
                 unless ($serializer) {
-                    return _set_serializer( $app, undef );
+                    return _set_serializer( $dsl, undef );
                 }
 
                 # TODO: RFC 5988 ?
 
-                return _set_serializer( $app, $serializer );
+                return _set_serializer( $dsl, $serializer );
             },
         ),
     );
@@ -834,8 +836,7 @@ register define_serializer => (
 register throw => (
     sub {
         my ($dsl, $status, $message) = @_;
-        my $app = $dsl->app;
-        _throw($app, $status => $message);
+        _throw( $dsl, $status => $message );
     },
     { is_global => 1 }
 );
