@@ -147,8 +147,6 @@ sub _build_sub {
     my @chains =
       map { [ $_->{chain}, $_->{captvar} ] }
       grep { ref $_->{chain} eq 'CODE' }
-
-      #grep { $_->{scope} eq 'single_id' }
       @$stack;
     my $cfg = $stack->[-1];
 
@@ -172,7 +170,7 @@ sub _build_sub {
             my $resp = $app->response;
             if ( ref $resp ) {
                 my $serializer = $resp->serializer;
-                if (   !$opts{dont_serialize}
+                if (!$opts{dont_serialize}
                     and $serializer
                     and not $app->request->has_serializer )
                 {
@@ -801,15 +799,11 @@ on_plugin_import {
                     $format = $type_to_fmt{ lc($1) } || $format;
                 }
 
-                # TODO: Access:-field? (via HTTP::Negotiate)
-
                 $serializer //= $ext_to_fmt{$format};
 
                 unless ($serializer) {
                     return _set_serializer( $dsl, undef );
                 }
-
-                # TODO: RFC 5988 ?
 
                 return _set_serializer( $dsl, $serializer );
             },
@@ -913,7 +907,7 @@ There are lots of features, like validation rules, chaining actions, mutual seri
 =head1 SYNOPSIS
 
     use Dancer2::Plugin::CRUD;
-
+    
     resource('person',
         create => sub {
             my $app = shift;
