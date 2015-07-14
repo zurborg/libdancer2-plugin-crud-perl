@@ -207,31 +207,26 @@ sub _build_sub {
             _throw( $app, 500 => $_ );
         };
 
-        my ( $code, $data );
+        my @return;
 
         try {
-            ( $code, $data ) = $sub->( $app, %params );
+            @return = $sub->( $app, %params );
         }
         catch {
             $dsl->debug("Error in $name: $_");
             _throw( $app, 500 => $_ );
         };
 
-        if ( defined $code and not ref $code and $code =~ m{^\d{3}$} ) {
-            $app->response->status($code);
-        }
-        else {
-            $data = $code;
+        if ( defined $return[0] and not ref $return[0] and $return[0] =~ m{^\d{3}$} ) {
+            $app->response->status(shift(@return));
         }
 
-        $data //= '';
-
-        if ( ref $data eq 'CODE' ) {
+        if ( ref $return[0] eq 'CODE' ) {
             return if _lceq( $app->request->method => 'HEAD' );
-            $data = $data->() || '';
+            $return[0] = $return[0]->();
         }
 
-        return $data;
+        return $return[0];
     };
 }
 
@@ -841,7 +836,6 @@ register throw => (
         my ($dsl, $status, $message) = @_;
         my $app = $dsl->app;
         _throw($app, $status => $message);
-        die 'UNCAUGHT';
     },
     { is_global => 1 }
 );
@@ -1149,6 +1143,41 @@ A prefix handler for defining other resources and routes under the I</plural_res
 =back
 
 If you don't like the terms single and plural, you can use I<prefix> and I<prefix_id>, which overwrites I<plural> and I<single_id>. For many users it sounds more convenient.
+
+=head3 RETURN VALUES
+
+There are ... types of return values supported:
+
+=over 4
+
+=item * Single reference
+
+The statuscode is left untouched and the response will be serialized:
+
+    return { foo => 123 };
+
+=item * Single string
+
+The statuscode is left untouched and the response will not be serialized:
+
+    return "Hello, World!";
+
+=item * Single status code
+
+This rule matches if the only return value is a three-digit number and looks like a valid HTTP status code.
+
+    return 404;
+
+=item * Status code + any of the above (except single status code, of course)
+
+The first argument has to be a valid status code, the second argument a reference or a string
+
+    return 403 => { bar => 456 };
+    return 401 => "Bad boy!";
+
+=back
+
+An additional special rule only applies to HEAD and GET requests, see L</"HANDLE HEAD REQUEST"> below for more information.
 
 =method throw ($status, $message)
 
