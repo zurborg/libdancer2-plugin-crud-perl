@@ -115,7 +115,11 @@ sub _set_serializer {
 sub _throw {
     my ( $dsl, $status, $message, %extras ) = @_;
 
-    die $message unless ref $app->response;
+    $dsl->execute_hook(on_every_error => (\$status, \$message));
+
+    $dsl->execute_hook("on_$status" => $message);
+
+    die $message unless ref $dsl->app->response;
 
     my $serializer = $dsl->app->response->serializer;
 
@@ -126,6 +130,8 @@ sub _throw {
         ( status     => $status ) x !!$status,
         ( serializer => $serializer ) x !!$serializer,
     )->throw;
+
+    $dsl->execute_hook(error_before_send => $err);
 
     $dsl->app->has_with_return && $dsl->app->with_return->($err);
 
@@ -840,6 +846,10 @@ register throw => (
     },
     { is_global => 1 }
 );
+
+register_hook qw(on_every_error error_before_send);
+
+register_hook "on_$_" for (400..599);
 
 register_plugin;
 
