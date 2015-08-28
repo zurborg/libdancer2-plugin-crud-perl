@@ -4,7 +4,7 @@ package Dancer2::Plugin::CRUD;
 
 # ABSTRACT: A plugin for writing RESTful apps with Dancer
 
-use Dancer2::Plugin;
+use Dancer2::Plugin 0.161000;
 use Carp qw(croak confess);
 use Sub::Name qw(subname);
 use Text::Pluralize          ();
@@ -172,7 +172,7 @@ sub _build_sub {
                 my $serializer = $resp->serializer;
                 if (!$opts{dont_serialize}
                     and $serializer
-                    and not $app->request->has_serializer )
+                    and not $app->request->serializer )
                 {
                     $app->request->{data} =
                       $serializer->deserialize( $app->request->body );
