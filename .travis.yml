@@ -23,4 +23,3 @@ install:
    - "dzil listdeps   --author --missing | grep -vP '[^\\w:]' | cpanm --verbose"
 script:
    - dzil smoke --release --author
-
