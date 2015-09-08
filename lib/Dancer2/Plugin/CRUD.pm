@@ -14,6 +14,7 @@ use Attribute::Handlers;
 use Dancer2::Plugin::CRUD::Documentation ();
 use Dancer2::Plugin::CRUD::Constants qw(:all);
 use Scalar::Util qw(blessed);
+use HTTP::Status qw(status_message);
 use Try::Tiny;
 
 # VERSION
@@ -114,6 +115,8 @@ sub _set_serializer {
 
 sub _throw {
     my ( $dsl, $status, $message, %extras ) = @_;
+
+    $message ||= status_message($status);
 
     $dsl->execute_hook(on_every_error => (\$status, \$message));
 
