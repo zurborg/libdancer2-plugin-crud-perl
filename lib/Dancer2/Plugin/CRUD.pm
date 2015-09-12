@@ -252,13 +252,14 @@ sub _get_documentation {
 }
 
 sub _getsub {
-    my ( $resources, $action, $sub, $pkg ) = @_;
+    my ( $resources, $action, $sub, $pkg, $suffix ) = @_;
     return $sub if ref $sub eq 'CODE';
     die "handler for action $action not defined" unless defined $sub;
     die "unknown handler for action $action: $sub"
       unless _lceq( $sub => 'dispatch' );
     map { $pkg .= '::' . _camelize($_) } @$resources;
-    $sub = "${pkg}::${action}_action";
+    $sub = "${pkg}::${action}";
+	$sub .= '_'.$suffix if defined $suffix;
     return \&$sub;
 }
 
@@ -386,8 +387,8 @@ sub single_resource {
     $options{plural} = delete $options{prefix} if exists $options{prefix};
 
     ### single_id ###
+	$cfg->{chain}   = _getsub( $resources, 'chain_id', delete $options{chain_id}, $options{caller} ) if defined $options{chain_id};
     $cfg->{scope}   = 'single_id';
-    $cfg->{chain}   = delete $options{chain_id};
     $cfg->{captvar} = $captvar;
     if ( exists $options{single_id} ) {
         my $sub = delete $options{single_id};
@@ -420,7 +421,7 @@ sub single_resource {
             $cfg->{method} = $method;
             my $coderef =
               _getsub( $resources, $method, delete $options{$method},
-                $options{caller} );
+                $options{caller}, 'action' );
             my $doc     = _get_documentation($coderef);
             my %actopts = _get_attributes($coderef);
 
@@ -504,9 +505,11 @@ sub single_resource {
     delete $cfg->{captvar};
     delete $cfg->{chain};
 
-    ### single ###
+	### single and plural ###
+	$cfg->{chain} = _getsub( $resources, 'chain', delete $options{chain}, $options{caller} ) if defined $options{chain};
+
+	### single ###
     $cfg->{scope} = 'single';
-    $cfg->{chain} = delete $options{chain};
     if ( exists $options{single} ) {
         my $sub = delete $options{single};
         $cfg->{prefix} = qr{ /+ \Q$single\E }xsi;
@@ -521,7 +524,7 @@ sub single_resource {
             $cfg->{method} = $method;
             my $coderef =
               _getsub( $resources, $method, delete $options{$method},
-                $options{caller} );
+                $options{caller}, 'action' );
             my $doc     = _get_documentation($coderef);
             my %actopts = _get_attributes($coderef);
 
@@ -612,7 +615,7 @@ sub single_resource {
             $cfg->{method} = $method;
             my $coderef =
               _getsub( $resources, $method, delete $options{$method},
-                $options{caller} );
+                $options{caller}, 'action' );
             my $doc     = _get_documentation($coderef);
             my %actopts = _get_attributes($coderef);
 
