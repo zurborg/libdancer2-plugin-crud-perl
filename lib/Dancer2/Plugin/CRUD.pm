@@ -120,7 +120,7 @@ sub _throw {
 
     $dsl->execute_hook(on_every_error => (\$status, \$message));
 
-    $dsl->execute_hook("on_$status" => $message);
+    $dsl->execute_hook("on_$status" => $message) if $status >= 400 and $status <= 599;
 
     my $resp = $dsl->app->response;
 
