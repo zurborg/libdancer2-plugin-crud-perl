@@ -76,6 +76,8 @@ require tests;
     resource( status => index => sub { return 202 => [qw[ ok ]] } );
 
     resource( error => index => sub { die "meh\n" } );
+
+    resource( throw => index => sub { throw (400 => "meh"); die "BAD!!!"; } );
 }
 
 my $PT = boot('Webservice');
@@ -110,7 +112,7 @@ sub cmp_formats {
     );
 }
 
-plan( tests => 6 );
+plan( tests => 7 );
 
 dotest(
     icrupd => 6,
@@ -237,6 +239,26 @@ dotest(
                 message => "meh\n",
                 status  => 500,
                 title   => 'Error 500 - Internal Server Error',
+            }
+        );
+    }
+);
+
+dotest(
+    throw => 4,
+    sub {
+        my $R = request( $PT, GET => '/throw.dump' );
+        ok( !$R->is_success );
+        is( $R->code => 400 );
+        my $VAR1;
+        eval $R->content;
+        ok( !$@ );
+        cmp_deeply(
+            $VAR1,
+            {
+                message => "meh",
+                status  => 400,
+                title   => 'Error 400 - Bad Request',
             }
         );
     }

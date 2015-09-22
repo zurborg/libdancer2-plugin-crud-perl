@@ -122,23 +122,25 @@ sub _throw {
 
     $dsl->execute_hook("on_$status" => $message);
 
-    die $message unless ref $dsl->app->response;
+    my $resp = $dsl->app->response;
 
-    my $serializer = $dsl->app->response->serializer;
+    die $message unless ref $resp;
 
-    my $err = Dancer2::Core::Error->new(
+    my $serializer = $resp->serializer;
+
+    my $err = $resp->error(
         %extras,
         ( message    => $message ),
         ( app        => $dsl->app ),
         ( status     => $status ) x !!$status,
         ( serializer => $serializer ) x !!$serializer,
-    )->throw;
+    );
 
     $dsl->execute_hook(error_before_send => $err);
 
-    $dsl->app->has_with_return && $dsl->app->with_return->($err);
+    $dsl->app->has_with_return && $dsl->app->with_return->($dsl->response);
 
-    die $err;
+    return $err;
 }
 
 sub _build_sub {
