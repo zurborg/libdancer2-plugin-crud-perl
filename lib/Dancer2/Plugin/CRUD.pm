@@ -859,6 +859,7 @@ register catch_http_exception => (
                 $code->($dsl);
             }
         }
+        return unless $@;
         if ( my $e = HTTP::Exception->caught ) {
             _throw( $dsl, $e->code, $e->status_message );
         } elsif ($code) {
