@@ -15,6 +15,7 @@ use Dancer2::Plugin::CRUD::Documentation ();
 use Dancer2::Plugin::CRUD::Constants qw(:all);
 use Scalar::Util qw(blessed);
 use HTTP::Status qw(status_message);
+use HTTP::Exception ();
 use Try::Tiny;
 
 # VERSION
@@ -846,6 +847,25 @@ register throw => (
     sub {
         my ($dsl, $status, $message) = @_;
         _throw( $dsl, $status => $message );
+    },
+    { is_global => 1 }
+);
+
+register catch_http_exception => (
+    sub {
+        my ($dsl, $code) = @_;
+        if ($code) {
+            eval {
+                $code->($dsl);
+            }
+        }
+        if ( my $e = HTTP::Exception->caught ) {
+            _throw( $dsl, $e->code, $e->status_message );
+        } elsif ($code) {
+            die $@;
+        } else {
+            return $@;
+        }
     },
     { is_global => 1 }
 );
