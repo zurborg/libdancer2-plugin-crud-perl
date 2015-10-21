@@ -139,7 +139,7 @@ sub _throw {
 
     $dsl->execute_hook(error_before_send => $err);
 
-    $dsl->app->has_with_return && $dsl->app->with_return->($dsl->response);
+    $dsl->app->has_with_return && $dsl->app->with_return->($resp);
 
     return $err;
 }
