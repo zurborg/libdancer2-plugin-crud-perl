@@ -6,12 +6,12 @@ package Dancer2::Plugin::CRUD::Test;
 
 =head1 SYNOPSIS
 
-	use Dancer2::Plugin::CRUD::Test;
-	
-	my $T = Dancer2::Plugin::CRUD::Test->new('My::WebService');
-	
-	my $R = $T->action(create => '/echo', { 'xx' => 'yy' }, expect => 200);
-	$T->is_deeply($R => { 'xx' => 'yy' });
+    use Dancer2::Plugin::CRUD::Test;
+
+    my $T = Dancer2::Plugin::CRUD::Test->new('My::WebService');
+
+    my $R = $T->action(create => '/echo', { 'xx' => 'yy' }, expect => 200);
+    $T->is_deeply($R => { 'xx' => 'yy' });
 
 =cut
 
@@ -79,9 +79,9 @@ sub BUILDARGS {
 
 Perform a simple request for use with L<HTTP::Request::Common>:
 
-	use HTTP::Request::Common;
-	$T->request(GET '/foo');
-	$T->request(POST '/bar', [ xx => 'yy' ]);
+    use HTTP::Request::Common;
+    $T->request(GET '/foo');
+    $T->request(POST '/bar', [ xx => 'yy' ]);
 
 =cut
 
@@ -94,19 +94,19 @@ sub request {
 
 Perform a CRUD request with automatic (de-)serialization.
 
-	my $R = $T->action(index => '/foo'); # requests GET /foo.dump
+    my $R = $T->action(index => '/foo'); # requests GET /foo.dump
 
 The returned L<HTTP::Message> object is extened with an extra method called I<data()>. It holds the deserialized body of the response.
 
-	my $data = $R->data;
-	my $foo = $data->{foo};
+    my $data = $R->data;
+    my $foo = $data->{foo};
 
 No content will be appened to request when C<$body> is undef.
 
 The response can be be automatically checked when C<$options{expect}> is set
 
-	my $R = $R->action($action, $path, $body, expect => 200);
-	# is($R->code => 200);
+    my $R = $R->action($action, $path, $body, expect => 200);
+    # is($R->code => 200);
 
 =cut
 
@@ -128,16 +128,16 @@ sub action {
 
 Compares deep structures of the response.
 
-	$T->compare($R, $expect);
+    $T->compare($R, $expect);
 
 which is the same as
 
-	$R->compare($expect);
+    $R->compare($expect);
 
 and thats is the same as
 
-	use Test::More;
-	is_deeply($R->data, $expect);
+    use Test::More;
+    is_deeply($R->data, $expect);
 
 =cut
 

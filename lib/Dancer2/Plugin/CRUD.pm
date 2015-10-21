@@ -262,13 +262,13 @@ sub _getsub {
       unless _lceq( $sub => 'dispatch' );
     map { $pkg .= '::' . _camelize($_) } @$resources;
     $sub = "${pkg}::${action}";
-	$sub .= '_'.$suffix if defined $suffix;
+    $sub .= '_'.$suffix if defined $suffix;
     return \&$sub;
 }
 
-sub multi_resource;
+sub _multi_resource;
 
-sub multi_resource {
+sub _multi_resource {
     my ( $dsl, $resources, %globals ) = @_;
 
     foreach my $resource ( keys %$resources ) {
@@ -286,7 +286,7 @@ sub multi_resource {
             my $after   = delete $subopts->{after};
             $options->{single} = sub {
                 $before->(%globals) if ref $before eq 'CODE';
-                multi_resource( $dsl, $subopts, %globals );
+                _multi_resource( $dsl, $subopts, %globals );
                 $after->(%globals) if ref $after eq 'CODE';
             };
         }
@@ -296,7 +296,7 @@ sub multi_resource {
             my $after   = delete $subopts->{after};
             $options->{single_id} = sub {
                 $before->(%globals) if ref $before eq 'CODE';
-                multi_resource( $dsl, $subopts, %globals );
+                _multi_resource( $dsl, $subopts, %globals );
                 $after->(%globals) if ref $after eq 'CODE';
             };
         }
@@ -306,22 +306,22 @@ sub multi_resource {
             my $after   = delete $subopts->{after};
             $options->{plural} = sub {
                 $before->(%globals) if ref $before eq 'CODE';
-                multi_resource( $dsl, $subopts, %globals );
+                _multi_resource( $dsl, $subopts, %globals );
                 $after->(%globals) if ref $after eq 'CODE';
             };
         }
-        single_resource( $dsl, $resource, %$options );
+        _single_resource( $dsl, $resource, %$options );
     }
 }
 
-sub single_resource;
+sub _single_resource;
 
-sub single_resource {
+sub _single_resource {
     my ( $dsl, $resource, %options ) = @_;
 
     $options{caller} //= ( caller(1) )[0];
 
-    return multi_resource( $dsl, $resource, %options )
+    return _multi_resource( $dsl, $resource, %options )
       if ref $resource eq 'HASH';
 
     my ( $single, $plural ) = _pluralize($resource);
@@ -390,7 +390,7 @@ sub single_resource {
     $options{plural} = delete $options{prefix} if exists $options{prefix};
 
     ### single_id ###
-	$cfg->{chain}   = _getsub( $resources, 'chain_id', delete $options{chain_id}, $options{caller} ) if defined $options{chain_id};
+    $cfg->{chain}   = _getsub( $resources, 'chain_id', delete $options{chain_id}, $options{caller} ) if defined $options{chain_id};
     $cfg->{scope}   = 'single_id';
     $cfg->{captvar} = $captvar;
     if ( exists $options{single_id} ) {
@@ -508,10 +508,10 @@ sub single_resource {
     delete $cfg->{captvar};
     delete $cfg->{chain};
 
-	### single and plural ###
-	$cfg->{chain} = _getsub( $resources, 'chain', delete $options{chain}, $options{caller} ) if defined $options{chain};
+    ### single and plural ###
+    $cfg->{chain} = _getsub( $resources, 'chain', delete $options{chain}, $options{caller} ) if defined $options{chain};
 
-	### single ###
+    ### single ###
     $cfg->{scope} = 'single';
     if ( exists $options{single} ) {
         my $sub = delete $options{single};
@@ -722,7 +722,7 @@ sub single_resource {
 }
 
 register
-  resource => \&single_resource,
+  resource => \&_single_resource,
   { is_global => 1 };
 
 our %RAWDOC;
@@ -937,7 +937,7 @@ There are lots of features, like validation rules, chaining actions, mutual seri
 =head1 SYNOPSIS
 
     use Dancer2::Plugin::CRUD;
-    
+
     resource('person',
         create => sub {
             my $app = shift;
@@ -1233,7 +1233,7 @@ After this call the documentation stack will be resetted. This allows to generat
     resource("foo1", ...);
     resource("foo2", ...);
     publish_apiblueprint("/foo_doc");
-    
+
     resource("bar1", ...);
     resource("bar2", ...);
     publish_apiblueprint("/bar_doc");
@@ -1246,7 +1246,7 @@ Define an own serializer which is not defined in L<Dancer2> or this package.
         extensions => [qw[ xml ]], # format name in URI
         mime_types => [qw[ text/xml ]],
     );
-    
+
     my $serializer = My::Own::Serializer::Module->new;
     ## $serialzier must be consumer of Dancer2::Core::Role::Serializer
     define_serializer($serializer, ...);
@@ -1280,10 +1280,10 @@ Instead of providing a CodeRef as an action handler, the keyword L<dispatch> ena
 Or using an ArrayRef:
 
     resource('foo_bar',
-        
+
         # dispatches to ::read_action and ::update_action
         dispatch => [qw[ read update ]],
-        
+
         # same, but with comma-separated string
         dispatch => 'read,update',
     );
@@ -1305,11 +1305,11 @@ A HTTP I<HEAD> request behaves like a normal I<GET> request - instead that no bo
 
 In other contexts where HEAD does not apply, like POST, PUT, DELETE, ..., the CodeRef will be executed everytime. So its recommended to use this feature only with I<index> and I<read> handlers.
 
-=head USING HASHREF CONFIG
+=head2 USING HASHREF CONFIG
 
 If the first argument to the I<resource> keyword is a HashRef, that will be used to define more resources at once.
 
-The I<single>, I<single_id> and I<plural> keyword accepts a HashRef too. 
+The I<single>, I<single_id> and I<plural> keyword accepts a HashRef too.
 
     resource({
         foo => {

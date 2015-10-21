@@ -546,7 +546,7 @@ B<Important notice>: please keep in mind, that all parenthesis B<must> be balanc
 
     use Dancer2::Plugin::CRUD;
     use Dancer2::Plugin::CRUD::Documentation;
-    
+
     resource("foo",
         index => sub
             :Description(
