@@ -473,11 +473,7 @@ sub _single_resource {
                 dont_serialize => exists $actopts{iformat},
             );
             $add_route->(
-                qr{
-                        /+ \Q$single\E
-                        /+ $idregex
-                        (?:/+|\.(?<format>$lfmtregex))
-                    }xs,
+                qr{ /+ \Q$single\E /+ $idregex (?:/+|\.(?<format>$lfmtregex)) }xs,
                 $method,
                 $sub,
             );
@@ -486,12 +482,8 @@ sub _single_resource {
                 and not exists $actopts{oformat} )
             {
                 $dsl->app->add_route(
-                    regexp => qr{^
-                            $prefix
-                            /+ \Q$single\E
-                            /+ $idregex
-                            \.(?<format>${method}p)
-                        $}xsi,
+                    regexp  =>
+          qr{^ $prefix /+ \Q$single\E /+ $idregex \.(?<format>${method}p) $}xsi,
                     method  => 'get',
                     options => {},
                     code    => $sub
@@ -575,20 +567,14 @@ sub _single_resource {
                 schema  => delete( $actopts{schema} )
             );
             $add_route->(
-                qr{
-                        /+ \Q$single\E
-                        (?:/+|\.(?<format>$lfmtregex))
-                    }xs,
+                qr{ /+ \Q$single\E (?:/+|\.(?<format>$lfmtregex)) }xs,
                 $method,
                 $sub,
             );
             if ( $options{jsonp} and not exists $actopts{format} ) {
                 $dsl->app->add_route(
-                    regexp => qr{^
-                            $prefix
-                            /+ \Q$single\E
-                            \.(?<format>${method}p)
-                        $}xsi,
+                    regexp  =>
+                      qr{^ $prefix /+ \Q$single\E \.(?<format>${method}p) $}xsi,
                     method  => 'get',
                     options => {},
                     code    => $sub
@@ -666,20 +652,14 @@ sub _single_resource {
                 schema  => delete( $actopts{schema} )
             );
             $add_route->(
-                qr{
-                        /+ \Q$plural\E
-                        (?:/+|\.(?<format>$lfmtregex))
-                    }xs,
+                qr{ /+ \Q$plural\E (?:/+|\.(?<format>$lfmtregex)) }xs,
                 $method,
                 $sub,
             );
             if ( $options{jsonp} and not exists $actopts{format} ) {
                 $dsl->app->add_route(
-                    regexp => qr{^
-                            $prefix
-                            /+ \Q$plural\E
-                            \.(?<format>${method}p)
-                        $}xsi,
+                    regexp  =>
+                      qr{^ $prefix /+ \Q$plural\E \.(?<format>${method}p) $}xsi,
                     method  => 'get',
                     options => {},
                     code    => $sub
