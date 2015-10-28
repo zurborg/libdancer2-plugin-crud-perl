@@ -23,20 +23,13 @@ use HTTP::Request::Common ();
 use Class::Load qw(load_class);
 use Dancer2::Serializer::Dumper;
 use Dancer2::Plugin::CRUD::Constants qw(%trigger_to_method);
-use Sub::Name;
+use Tie::Symbol;
 
 # VERSION
 
-sub _redefine {
-    my ( $class, $name, $coderef ) = @_;
-    ## no critic
-    no warnings 'redefine';
-    no strict 'refs';
-    *{"${class}::${name}"} = subname( $name => $coderef );
-    ## use critic
-}
-
 =attr app
+
+L<Dancer2::Core::App>
 
 =cut
 
@@ -44,27 +37,25 @@ has app => ( is => 'ro', );
 
 =attr PT
 
+L<Plack::Test>
+
 =cut
 
 has PT => ( is => 'ro', );
 
 my $S = Dancer2::Serializer::Dumper->new;
 
-_redefine(
-    'HTTP::Message',
-    data => sub {
-        my $self = shift;
-        $self->{_data} = shift if @_;
-        return $self->{_data};
-    }
-);
+my $HTTP_Message_ST = Tie::Symbol->new('HTTP::Message');
 
-_redefine(
-    'HTTP::Message',
-    compare => sub {
-        is_deeply( shift()->data, shift() );
-    }
-);
+$HTTP_Message_ST->{'&data'} = sub {
+    my $self = shift;
+    $self->{_data} = shift if @_;
+    return $self->{_data};
+};
+
+$HTTP_Message_ST->{'&compare'} = sub {
+    is_deeply( shift()->data, shift() );
+};
 
 sub BUILDARGS {
     my $self  = shift;
