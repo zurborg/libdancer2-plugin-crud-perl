@@ -9,7 +9,7 @@ use Carp qw(croak confess);
 use Sub::Name qw(subname);
 use Text::Pluralize          ();
 use Class::Method::Modifiers ();
-use Class::Load qw(try_load_class);
+use Class::Load qw(try_load_class load_class);
 use Attribute::Handlers;
 use Dancer2::Plugin::CRUD::Documentation ();
 use Dancer2::Plugin::CRUD::Constants qw(:all);
@@ -17,6 +17,7 @@ use Scalar::Util qw(blessed);
 use HTTP::Status qw(status_message);
 use HTTP::Exception ();
 use Try::Tiny;
+use Tie::Symbol;
 
 # VERSION
 
@@ -325,6 +326,15 @@ sub _single_resource {
       if ref $resource eq 'HASH';
 
     my ( $single, $plural ) = _pluralize($resource);
+
+    if (my $class = delete $options{class}) {
+        load_class($class);
+        my $ST = Tie::Symbol->new($class);
+        foreach my $method (qw(index create read update delete patch chain chain_id)) {
+            my $subname = '&'.$method;
+            $options{$method} //= $ST->{$subname} if exists $ST->{$subname};
+        }
+    }
 
     my $idregex = delete( $options{idregex} ) || qr{[^\/\.\:\?]+};
 
