@@ -1,4 +1,4 @@
-use strictures 1;
+use strictures 2;
 
 package Dancer2::Plugin::CRUD;
 
