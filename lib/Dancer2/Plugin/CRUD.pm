@@ -844,7 +844,7 @@ register define_serializer => (
         my $name = blessed $module;
         if ( defined $name ) {
             die "$name is not a member of the Dancer2 serializer role"
-              unless $module->isa('Dancer2::Core::Role::Serializer');
+              unless ($module->can('does') and $module->does('Dancer2::Core::Role::Serializer'));
         }
         else {
             $name = "Dancer2::Serializer::$module";
