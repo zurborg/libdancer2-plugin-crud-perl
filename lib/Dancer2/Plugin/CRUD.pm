@@ -259,12 +259,15 @@ sub _getsub {
     my ( $dsl, $resources, $action, $sub, $pkg, $suffix ) = @_;
     return $sub if ref $sub eq 'CODE';
     die "handler for action $action not defined" unless defined $sub;
-    die "unknown handler for action $action: $sub"
-      unless _lceq( $sub => 'dispatch' );
-    map { $pkg .= '::' . _camelize($_) } @$resources;
-    $sub = "${pkg}::${action}";
-    $sub .= '_'.$suffix if defined $suffix;
-    return \&$sub;
+
+    if (_lceq($sub => 'dispatch')) {
+        map { $pkg .= '::' . _camelize($_) } @$resources;
+        my $ST = Tie::Symbol->new($pkg);
+        $action .= '_'.$suffix if defined $suffix;
+        return $ST->{'&'.$action};
+    } else {
+        die "unknown handler for action $action: $sub";
+    }
 }
 
 sub _multi_resource;
