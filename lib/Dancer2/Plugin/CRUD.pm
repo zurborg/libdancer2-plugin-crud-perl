@@ -168,7 +168,7 @@ sub _build_sub {
 
     my $name = join '/' => map { $_->{single} } @$stack;
 
-    return sub {
+    return subname $method => sub {
         my $app      = shift;
         my $captures = $app->request->captures || {};
         my %params   = map { ( $_ => $captures->{$_} ) } @captures;
@@ -266,7 +266,7 @@ sub _getsub {
         $action .= '_'.$suffix if defined $suffix;
         return $ST->{'&'.$action};
     } elsif (_lceq($sub => 'deny')) {
-        return sub {
+        return subname method_not_allowed => sub {
             _throw($dsl, 405);
         };
     } else {
@@ -292,7 +292,7 @@ sub _multi_resource {
             my $subopts = delete $options->{single};
             my $before  = delete $subopts->{before};
             my $after   = delete $subopts->{after};
-            $options->{single} = sub {
+            $options->{single} = subname single => sub {
                 $before->(%globals) if ref $before eq 'CODE';
                 _multi_resource( $dsl, $subopts, %globals );
                 $after->(%globals) if ref $after eq 'CODE';
@@ -302,7 +302,7 @@ sub _multi_resource {
             my $subopts = delete $options->{single_id};
             my $before  = delete $subopts->{before};
             my $after   = delete $subopts->{after};
-            $options->{single_id} = sub {
+            $options->{single_id} = subname single_id => sub {
                 $before->(%globals) if ref $before eq 'CODE';
                 _multi_resource( $dsl, $subopts, %globals );
                 $after->(%globals) if ref $after eq 'CODE';
@@ -312,7 +312,7 @@ sub _multi_resource {
             my $subopts = delete $options->{plural};
             my $before  = delete $subopts->{before};
             my $after   = delete $subopts->{after};
-            $options->{plural} = sub {
+            $options->{plural} = subname plural => sub {
                 $before->(%globals) if ref $before eq 'CODE';
                 _multi_resource( $dsl, $subopts, %globals );
                 $after->(%globals) if ref $after eq 'CODE';
@@ -369,7 +369,7 @@ sub _single_resource {
     my %routes;
     my @routes;
 
-    my $add_route = sub {
+    my $add_route = subname add_route => sub {
         my ( $regexp, $action, $coderef ) = @_;
         my $key    = qr{^$prefix$regexp$}s;
         my $method = $trigger_to_method{$action};
@@ -383,7 +383,10 @@ sub _single_resource {
             regexp  => $key,
             method  => 'head',
             options => {},
-            code    => sub { $coderef->(@_); return },
+            code    => subname "${action}_head" => sub {
+                $coderef->(@_);
+                return;
+            },
         ) if $method eq 'get';
         $routes{$key} //= [];
         push @{ $routes{$key} } => $method;
@@ -721,7 +724,7 @@ sub _single_resource {
             regexp  => qr{$regexp},
             method  => 'options',
             options => {},
-            code    => sub {
+            code    => subname options => sub {
                 my $app = shift;
                 $app->response->header( Allow => $allowed_methods );
             }
@@ -755,7 +758,7 @@ register publish_apiblueprint => (
         $RAWDOC{$id} = $doc if $id;
 
         return $dsl->get(
-            qr{^ \Q$path\E \. (?<format> md ) $}x => sub {
+            qr{^ \Q$path\E \. (?<format> md ) $}x => subname(get_apiblueprint => sub {
                 my $app = shift;
 
                 my $format = $app->request->captures->{format};
@@ -765,7 +768,7 @@ register publish_apiblueprint => (
                 else {
                     _throw( $dsl, 404 => "unsupported format requested: $format" );
                 }
-            }
+            })
         );
 
     },
@@ -789,7 +792,7 @@ on_plugin_import {
     $dsl->app->add_hook(
         Dancer2::Core::Hook->new(
             name => 'before',
-            code => sub {
+            code => subname before_hook => sub {
                 my $app = shift;
                 return
                   unless $app->request->method =~
