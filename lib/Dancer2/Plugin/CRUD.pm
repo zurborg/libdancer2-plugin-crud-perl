@@ -368,7 +368,7 @@ sub _single_resource {
             options => {},
             code    => sub { $coderef->(@_); return },
         ) if $method eq 'get';
-        $routes{$key} //= [$key];
+        $routes{$key} //= [];
         push @{ $routes{$key} } => $method;
     };
 
@@ -698,16 +698,18 @@ sub _single_resource {
 
     pop @$stack;
 
-    foreach my $route ( keys %routes ) {
-        my $regexp = shift @{ $routes{$route} };
-        my @methods = map uc, @{ $routes{$route} };
+    croak "no actions defined for resource $resource\n" unless keys %routes;
+
+    foreach my $regexp ( keys %routes ) {
+        my @methods = @{ $routes{$regexp} };
+        my $allowed_methods = join ',', sort map uc, @methods;
         push @routes => $dsl->app->add_route(
-            regexp  => $regexp,
+            regexp  => qr{$regexp},
             method  => 'options',
             options => {},
             code    => sub {
                 my $app = shift;
-                $app->response->header( Allow => join ',', @methods );
+                $app->response->header( Allow => $allowed_methods );
             }
         );
     }
