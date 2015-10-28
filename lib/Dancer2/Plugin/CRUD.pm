@@ -265,6 +265,10 @@ sub _getsub {
         my $ST = Tie::Symbol->new($pkg);
         $action .= '_'.$suffix if defined $suffix;
         return $ST->{'&'.$action};
+    } elsif (_lceq($sub => 'deny')) {
+        return sub {
+            _throw($dsl, 405);
+        };
     } else {
         die "unknown handler for action $action: $sub";
     }
@@ -429,6 +433,23 @@ sub _single_resource {
         }
         foreach my $method (@dispatch) {
             $options{$method} //= 'dispatch';
+        }
+    }
+
+    if ( exists $options{deny} ) {
+        my $deny = delete $options{deny};
+        my @deny;
+        if ( ref $deny eq 'ARRAY' ) {
+            @deny = @$deny;
+        }
+        elsif ( defined $deny and not ref $deny ) {
+            @deny = map { s{\s+}{}gr } split /,+/, $deny;
+        }
+        else {
+            croak "unknown reftype for deny: " . ref($deny);
+        }
+        foreach my $method (@deny) {
+            $options{$method} //= 'deny';
         }
     }
 
