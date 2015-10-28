@@ -159,7 +159,8 @@ sub _build_sub {
 
     my $schema = $opts{schema};
     $schema = $schema->[0] if ref $schema eq 'ARRAY';
-    if ( ref $schema eq 'HASH' and try_load_class('JSON::Schema') ) {
+    if ( ref $schema ) {
+        load_class('JSON::Schema');
         $schema = JSON::Schema->new($schema);
     }
     else {
@@ -168,6 +169,8 @@ sub _build_sub {
 
     my $name = join '/' => map { $_->{single} } @$stack;
 
+    my $has_input = ($method =~ m{^create|update|patch$}i);
+
     return subname $method => sub {
         my $app      = shift;
         my $captures = $app->request->captures || {};
@@ -175,7 +178,7 @@ sub _build_sub {
 
         try {
             my $resp = $app->response;
-            if ( ref $resp ) {
+            if ( ref $resp and $has_input ) {
                 my $serializer = $resp->serializer;
                 if (!$opts{dont_serialize}
                     and $serializer
@@ -206,7 +209,7 @@ sub _build_sub {
                 $sub->( $app, $params{ $captvar || '' } );
             }
 
-            if ($schema) {
+            if ($has_input and $schema) {
                 my $result = $schema->validate( $app->request->data );
                 unless ($result) {
                     my $msg = join ', ',
