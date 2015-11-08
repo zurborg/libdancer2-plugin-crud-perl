@@ -469,6 +469,7 @@ sub _single_resource {
             my %actopts = _get_attributes($coderef);
 
             my $lfmtregex = $fmtregex;
+            my $dont_serialize = 0;
 
             $documentation->{$method} = {
                 %$doc,
@@ -486,6 +487,7 @@ sub _single_resource {
                       : [$_]
                 } @{ $actopts{iformat} };
                 $documentation->{$method}->{iformats} = \%formats;
+                $dont_serialize = 1;
             }
 
             if ( exists $actopts{oformat} ) {
@@ -504,13 +506,14 @@ sub _single_resource {
                           s{\Q{format}\E}{$formats[0]}egi;
                     }
                 }
+                $dont_serialize = 1;
             }
 
             my $sub = _build_sub(
                 $dsl,
                 $method        => $coderef,
-                schema         => delete( $actopts{schema} ),
-                dont_serialize => exists $actopts{iformat},
+                schema         => delete $actopts{schema},
+                dont_serialize => $dont_serialize,
             );
             $add_route->(
                 qr{ /+ \Q$single\E /+ $idregex (?:/+|\.(?<format>$lfmtregex)) }xs,
@@ -574,6 +577,8 @@ sub _single_resource {
               }
               if $doc;
 
+            my $dont_serialize = 0;
+
             if ( $doc and exists $actopts{iformat} ) {
                 my %formats = map { ( $_->[0] => $_->[1] || undef ) } map {
                     m{^ \s* (\S+) (?: \s+ \( \s* (\S*) \s* \) )? \s* $}x
@@ -581,6 +586,7 @@ sub _single_resource {
                       : [$_]
                 } @{ $actopts{iformat} };
                 $documentation->{$method}->{iformats} = \%formats;
+                $dont_serialize = 1;
             }
 
             if ( exists $actopts{oformat} ) {
@@ -599,12 +605,14 @@ sub _single_resource {
                           s{\Q{format}\E}{$formats[0]}egi;
                     }
                 }
+                $dont_serialize = 1;
             }
 
             my $sub = _build_sub(
                 $dsl,
                 $method => $coderef,
-                schema  => delete( $actopts{schema} )
+                schema  => delete $actopts{schema},
+                dont_serialize => $dont_serialize,
             );
             $add_route->(
                 qr{ /+ \Q$single\E (?:/+|\.(?<format>$lfmtregex)) }xs,
@@ -659,6 +667,8 @@ sub _single_resource {
               }
               if $doc;
 
+            my $dont_serialize = 0;
+
             if ( $doc and exists $actopts{iformat} ) {
                 my %formats = map { ( $_->[0] => $_->[1] || undef ) } map {
                     m{^ \s* (\S+) (?: \s+ \( \s* (\S*) \s* \) )? \s* $}x
@@ -666,6 +676,7 @@ sub _single_resource {
                       : [$_]
                 } @{ $actopts{iformat} };
                 $documentation->{$method}->{iformats} = \%formats;
+                $dont_serialize = 1;
             }
 
             if ( exists $actopts{oformat} ) {
@@ -684,12 +695,14 @@ sub _single_resource {
                           s{\Q{format}\E}{$formats[0]}egi;
                     }
                 }
+                $dont_serialize = 1;
             }
 
             my $sub = _build_sub(
                 $dsl,
                 $method => $coderef,
-                schema  => delete( $actopts{schema} )
+                schema  => delete $actopts{schema},
+                dont_serialize => $dont_serialize,
             );
             $add_route->(
                 qr{ /+ \Q$plural\E (?:/+|\.(?<format>$lfmtregex)) }xs,
