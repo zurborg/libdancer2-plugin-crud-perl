@@ -14,7 +14,7 @@ require tests;
         throw(400 => "meh");
     };
 
-    resource( test => index => sub { 1 } );
+    resource( test => index => sub { \1 } );
 }
 
 my $PT = boot('Webservice');

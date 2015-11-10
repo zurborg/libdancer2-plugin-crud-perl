@@ -145,6 +145,12 @@ sub _throw {
     return $err;
 }
 
+sub _make_path {
+    my ($app, $path, %args) = @_;
+    map { $path =~ s{ \{ \Q$_\E \} }{$args{$_}}sgx } keys %args;
+    return $path;
+}
+
 sub _build_sub {
     my ( $dsl, $method, $sub, %opts ) = @_;
     my %validations =
@@ -170,6 +176,8 @@ sub _build_sub {
     my $name = join '/' => map { $_->{single} } @$stack;
 
     my $has_input = ($method =~ m{^create|update|patch$}i);
+
+    my $read_path = $opts{documentation}->{read}->{Path};
 
     return subname $method => sub {
         my $app      = shift;
@@ -233,13 +241,23 @@ sub _build_sub {
             _throw( $dsl, 500 => $_ );
         };
 
-        if ( defined $return[0] and not ref $return[0] and $return[0] =~ m{^\d{3}$} ) {
+        if (@return > 1 and defined $return[0] and not ref $return[0] and $return[0] =~ m{^\d{3}$} ) {
             $app->response->status(shift(@return));
         }
 
         if ( ref $return[0] eq 'CODE' ) {
             return if _lceq( $app->request->method => 'HEAD' );
             $return[0] = $return[0]->();
+        }
+
+        if ( defined $return[0] and not ref $return[0] and !$opts{dont_serialize} ) {
+            die "no read method found" unless defined $read_path;
+            if (_lceq( $method => 'create' ) and $app->response->status == 200) {
+                $app->response->status(201);
+            }
+            my $uri = _make_path($app, $read_path, %params, $opts{captvar} => $return[0], format => $app->request->captures->{format});
+            $app->response->header(Location => $uri);
+            return;
         }
 
         return $return[0];
@@ -465,7 +483,7 @@ sub _single_resource {
             my $coderef =
               _getsub( $dsl, $resources, $method, delete $options{$method},
                 $options{caller}, 'action' );
-            my $doc     = _get_documentation($coderef);
+            my $doc     = _get_documentation($coderef) || {};
             my %actopts = _get_attributes($coderef);
 
             my $lfmtregex = $fmtregex;
@@ -514,6 +532,8 @@ sub _single_resource {
                 $method        => $coderef,
                 schema         => delete $actopts{schema},
                 dont_serialize => $dont_serialize,
+                documentation  => $documentation,
+                captvar        => $captvar,
             );
             $add_route->(
                 qr{ /+ \Q$single\E /+ $idregex (?:/+|\.(?<format>$lfmtregex)) }xs,
@@ -563,7 +583,7 @@ sub _single_resource {
             my $coderef =
               _getsub( $dsl, $resources, $method, delete $options{$method},
                 $options{caller}, 'action' );
-            my $doc     = _get_documentation($coderef);
+            my $doc     = _get_documentation($coderef) || {};
             my %actopts = _get_attributes($coderef);
 
             my $lfmtregex = $fmtregex;
@@ -613,6 +633,8 @@ sub _single_resource {
                 $method => $coderef,
                 schema  => delete $actopts{schema},
                 dont_serialize => $dont_serialize,
+                documentation  => $documentation,
+                captvar        => $captvar,
             );
             $add_route->(
                 qr{ /+ \Q$single\E (?:/+|\.(?<format>$lfmtregex)) }xs,
@@ -653,7 +675,7 @@ sub _single_resource {
             my $coderef =
               _getsub( $dsl, $resources, $method, delete $options{$method},
                 $options{caller}, 'action' );
-            my $doc     = _get_documentation($coderef);
+            my $doc     = _get_documentation($coderef) || {};
             my %actopts = _get_attributes($coderef);
 
             my $lfmtregex = $fmtregex;
@@ -703,6 +725,8 @@ sub _single_resource {
                 $method => $coderef,
                 schema  => delete $actopts{schema},
                 dont_serialize => $dont_serialize,
+                documentation  => $documentation,
+                captvar        => $captvar,
             );
             $add_route->(
                 qr{ /+ \Q$plural\E (?:/+|\.(?<format>$lfmtregex)) }xs,
@@ -1226,24 +1250,19 @@ The statuscode is left untouched and the response will be serialized:
 
     return { foo => 123 };
 
-=item * Single string
+=item * Status code + single reference
 
-The statuscode is left untouched and the response will not be serialized:
-
-    return "Hello, World!";
-
-=item * Single status code
-
-This rule matches if the only return value is a three-digit number and looks like a valid HTTP status code.
-
-    return 404;
-
-=item * Status code + any of the above (except single status code, of course)
-
-The first argument has to be a valid status code, the second argument a reference or a string
+The first argument has to be a valid status code, the second argument a reference
 
     return 403 => { bar => 456 };
-    return 401 => "Bad boy!";
+
+=item * Single unreferenced scalar value on create request
+
+The single argument is the new created id of the fresh resource.
+
+    return 123467;
+
+This sets the HTTP status code to 201 and the Location-header to a path to the new resource.
 
 =back
 
