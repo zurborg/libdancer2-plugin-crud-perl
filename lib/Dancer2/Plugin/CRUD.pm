@@ -83,7 +83,10 @@ sub _set_serializer {
     my $cur = $app->response->serializer;
 
     if ( defined $serializer and not ref $serializer ) {
-        my $class = "Dancer2::Serializer::$serializer";
+        my $class = $serializer !~ m{::}
+                  ? "Dancer2::Serializer::$serializer"
+                  : $serializer
+                  ;
         if ( try_load_class($class) ) {
             $serializer = $class->new;
         }
@@ -227,22 +230,46 @@ sub _build_sub {
             $app->response->status(shift(@return));
         }
 
-        if ( ref $return[0] eq 'CODE' ) {
+        my $entity = shift @return;
+
+        if ( ref $entity eq 'CODE' ) {
             return if _lceq( $app->request->method => 'HEAD' );
-            $return[0] = $return[0]->();
+            $entity = $entity->();
         }
 
-        if ( defined $return[0] and not ref $return[0] and !$opts{dont_serialize} ) {
+        if ( defined $entity and not ref $entity and length $entity and !$opts{dont_serialize} ) {
             die "no read method found" unless defined $read_path;
             if (_lceq( $method => 'create' ) and $app->response->status == 200) {
                 $app->response->status(201);
             }
-            my $uri = _make_path($app, $read_path, %params, $opts{captvar} => $return[0], format => $app->request->captures->{format});
+            my $uri = _make_path($app, $read_path, %params, $opts{captvar} => $entity, format => $format);
             $app->response->header(Location => $uri);
             return;
         }
 
-        return $return[0];
+        if ($format eq 'html') {
+            unless ($opts{allowhtml}) {
+                _throw($dsl, 415);
+            }
+
+            my $layout = $dsl->setting('layout');
+
+            if (my $xrw = $app->request->header('x_requested_with')) {
+                if ($xrw =~ m{xmlhttprequest}xsi) {
+                    $layout = undef;
+                }
+            }
+
+            my $template = $opts{template} // "$name/$method";
+            $template = $template->[0] if ref $template;
+
+            my $vars = { entity => $entity, vars => $dsl->vars };
+
+            $app->response->header('Content-Type' => 'text/html');
+            return $dsl->template($template, $vars, { layout => $layout });
+        }
+
+        return $entity;
     };
 }
 

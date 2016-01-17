@@ -20,6 +20,7 @@ our %ext_to_fmt = (
     dump => 'Dumper',
     cbr  => 'CBOR',
     cbor => 'CBOR',
+    html => 'Dancer2::Plugin::CRUD::HTML',
 );
 
 our %type_to_fmt = (
