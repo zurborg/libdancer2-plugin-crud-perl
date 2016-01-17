@@ -10,16 +10,16 @@ use Sub::Name qw(subname);
 use Text::Pluralize          ();
 use Class::Method::Modifiers ();
 use Class::Load qw(try_load_class load_class);
-use Attribute::Universal
+use Attribute::Universal 0.003
     Format => 'CODE,RAWDATA,BEGIN',
     InputFormat => 'CODE,RAWDATA,BEGIN',
     OutputFormat => 'CODE,RAWDATA,BEGIN',
     AllowHtml => 'CODE,RAWDATA,BEGIN',
     Template => 'CODE,RAWDATA,BEGIN';
 
-#use Dancer2::Plugin::CRUD::Documentation ();
+use Dancer2::Plugin::CRUD::Documentation ();
 use Dancer2::Plugin::CRUD::Constants qw(:all);
-use Scalar::Util qw(blessed);
+use Scalar::Util qw(blessed refaddr);
 use HTTP::Status qw(status_message);
 use HTTP::Exception ();
 use Try::Tiny;
@@ -64,26 +64,24 @@ sub _camelize {
 
 sub ATTRIBUTE {
     my $hash = Attribute::Universal::to_hash(@_);
-    my $attribute = delete $hash->{attribute};
-    my $referent  = delete $hash->{referent};
-    my $payload   = delete $hash->{payload};
-    my @payload   = (ref $payload eq 'ARRAY') ? @$payload : ($payload);
-    $Stash->{$referent} //= {};
-    if ($attribute eq 'Format') {
-        $Stash->{$referent}->{InputFormat} //= [];
-        $Stash->{$referent}->{OutputFormat} //= [];
-        push @{ $Stash->{$referent}->{InputFormat} } => @payload;
-        push @{ $Stash->{$referent}->{OutputFormat} } => @payload;
+    if ($hash->{attribute} eq 'Format') {
+        _set_attributes({ %$hash, attribute => 'InputFormat' });
+        _set_attributes({ %$hash, attribute => 'OutputFormat' });
     } else {
-        $Stash->{$referent}->{$attribute} //= [];
-        push @{ $Stash->{$referent}->{$attribute} } => @payload;
+        _set_attributes($hash);
     }
+}
+
+sub _set_attributes {
+    my $hash = shift;
+    Attribute::Universal::collect_by_referent($Stash, $hash);
 }
 
 sub _get_attributes {
     my ($referent) = @_;
-    return () unless exists $Stash->{$referent};
-    return %{ $Stash->{$referent} };
+    my $refaddr = refaddr($referent);
+    return () unless exists $Stash->{$refaddr};
+    return %{ $Stash->{$refaddr} };
 }
 
 sub _set_serializer {
@@ -292,8 +290,9 @@ sub _get_documentation {
     return unless @doc;
     my %doc;
     foreach my $item (@doc) {
-        $doc{ $item->{type} } //= [];
-        push @{ $doc{ $item->{type} } } => $item->{documentation};
+        $doc{ $item->{attribute} } //= [];
+        my $content = $item->{content};
+        push @{ $doc{ $item->{attribute} } } => grep defined, @$content;
     }
     return \%doc;
 }
@@ -525,7 +524,7 @@ sub _single_resource {
                     m{^ \s* (\S+) (?: \s+ \( \s* (\S*) \s* \) )? \s* $}x
                       ? [ $1, $2 ]
                       : [$_]
-                } @{ $actopts{InputFormat} };
+                } @{ $actopts{InputFormat}->{content} };
                 $documentation->{$method}->{iformats} = \%formats;
                 $dont_serialize = 1;
             }
@@ -535,7 +534,7 @@ sub _single_resource {
                     m{^ \s* (\S+) (?: \s+ \( \s* (\S*) \s* \) )? \s* $}x
                       ? [ $1, $2 ]
                       : [$_]
-                } @{ $actopts{OutputFormat} };
+                } @{ $actopts{OutputFormat}->{content} };
                 my @formats = keys %formats;
                 $lfmtregex = join '|' => map quotemeta, @formats;
                 $lfmtregex = qr{(?:$lfmtregex)}x;
@@ -627,7 +626,7 @@ sub _single_resource {
                     m{^ \s* (\S+) (?: \s+ \( \s* (\S*) \s* \) )? \s* $}x
                       ? [ $1, $2 ]
                       : [$_]
-                } @{ $actopts{InputFormat} };
+                } @{ $actopts{InputFormat}->{content} };
                 $documentation->{$method}->{iformats} = \%formats;
                 $dont_serialize = 1;
             }
@@ -637,7 +636,7 @@ sub _single_resource {
                     m{^ \s* (\S+) (?: \s+ \( \s* (\S*) \s* \) )? \s* $}x
                       ? [ $1, $2 ]
                       : [$_]
-                } @{ $actopts{OutputFormat} };
+                } @{ $actopts{OutputFormat}->{content} };
                 my @formats = keys %formats;
                 $lfmtregex = join '|' => map quotemeta, @formats;
                 $lfmtregex = qr{(?:$lfmtregex)}x;
@@ -720,7 +719,7 @@ sub _single_resource {
                     m{^ \s* (\S+) (?: \s+ \( \s* (\S*) \s* \) )? \s* $}x
                       ? [ $1, $2 ]
                       : [$_]
-                } @{ $actopts{InputFormat} };
+                } @{ $actopts{InputFormat}->{content} };
                 $documentation->{$method}->{iformats} = \%formats;
                 $dont_serialize = 1;
             }
@@ -730,7 +729,7 @@ sub _single_resource {
                     m{^ \s* (\S+) (?: \s+ \( \s* (\S*) \s* \) )? \s* $}x
                       ? [ $1, $2 ]
                       : [$_]
-                } @{ $actopts{OutputFormat} };
+                } @{ $actopts{OutputFormat}->{content} };
                 my @formats = keys %formats;
                 $lfmtregex = join '|' => map quotemeta, @formats;
                 $lfmtregex = qr{(?:$lfmtregex)}x;
