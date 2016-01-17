@@ -51,6 +51,11 @@ sub request {
     return $PT->request( HTTP::Request::Common::_simple_req(@_) );
 }
 
+sub form_request {
+    my $PT = shift;
+    return $PT->request( HTTP::Request::Common::request_type_with_data(@_) );
+}
+
 sub OPTIONS {
     return HTTP::Request::Common::_simple_req( OPTIONS => @_ );
 }
