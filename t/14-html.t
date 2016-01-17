@@ -19,6 +19,10 @@ package Webservice {
             my ($self, %ids) = @_;
             return \%ids;
         },
+        update => sub : AllowHtml Template(bar) Template(edit) {
+            my ($self, %ids) = @_;
+            return \%ids;
+        },
         create => sub : AllowHtml {
             return {json=>to_json(request->data->multi)};
         }
@@ -44,6 +48,15 @@ dotest(
     foo_read => 2,
     sub {
         my $R = request( $PT, GET => '/foo/123.html' );
+        is( $R->code => 200 );
+        is( $R->content => 'The result is 123.' );
+    }
+);
+
+dotest(
+    foo_update => 2,
+    sub {
+        my $R = request( $PT, PUT => '/foo/123.html' );
         is( $R->code => 200 );
         is( $R->content => 'The result is 123.' );
     }

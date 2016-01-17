@@ -271,7 +271,11 @@ sub _build_sub {
                 }
             }
 
-            my $template = $opts{template} // "$name/$method";
+            my $template = "$name/$method";
+            if (ref $opts{template} and @{$opts{template}->{content}}) {
+                $template =  join '/' => @{$opts{template}->{content}};
+            }
+
             $template = $template->[0] if ref $template;
 
             my $vars = { entity => $entity, vars => $dsl->vars };
