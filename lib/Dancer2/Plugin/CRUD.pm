@@ -186,21 +186,17 @@ sub _build_sub {
     return subname $method => sub {
         my $app      = shift;
         my $captures = $app->request->captures || {};
+        my $format   = delete $captures->{format};
         my %params   = map { ( $_ => $captures->{$_} ) } @captures;
 
         try {
             my $resp = $app->response;
             if ( ref $resp and $has_input ) {
                 my $serializer = $resp->serializer;
-                if (!$opts{dont_serialize}
-                    and $serializer
-                    and not $app->request->serializer )
-                {
-                    $app->request->{data} =
-                      $serializer->deserialize( $app->request->body );
+                if ( !$opts{dont_serialize} and $serializer and not $app->request->serializer ) {
+                    $app->request->{data} = $serializer->deserialize( $app->request->body );
                 }
-            }
-            else {
+            } else {
                 $app->request->{data} = undef;
             }
 
@@ -221,8 +217,7 @@ sub _build_sub {
                 $sub->( $app, $params{ $captvar || '' } );
             }
 
-        }
-        catch {
+        } catch {
             $dsl->debug("Error in $name: $_");
             _throw( $dsl, 500 => $_ );
         };
