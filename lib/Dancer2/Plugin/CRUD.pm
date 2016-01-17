@@ -10,8 +10,14 @@ use Sub::Name qw(subname);
 use Text::Pluralize          ();
 use Class::Method::Modifiers ();
 use Class::Load qw(try_load_class load_class);
-use Attribute::Handlers;
-use Dancer2::Plugin::CRUD::Documentation ();
+use Attribute::Universal
+    Format => 'CODE,RAWDATA,BEGIN',
+    InputFormat => 'CODE,RAWDATA,BEGIN',
+    OutputFormat => 'CODE,RAWDATA,BEGIN',
+    AllowHtml => 'CODE,RAWDATA,BEGIN',
+    Template => 'CODE,RAWDATA,BEGIN';
+
+#use Dancer2::Plugin::CRUD::Documentation ();
 use Dancer2::Plugin::CRUD::Constants qw(:all);
 use Scalar::Util qw(blessed);
 use HTTP::Status qw(status_message);
@@ -56,15 +62,22 @@ sub _camelize {
     return ucfirst($str);
 }
 
-sub _add_attribute {
-    my ( $type, $package, $symbol, $referent, $data ) = @_[ 0 .. 3, 5 ];
-
+sub ATTRIBUTE {
+    my $hash = Attribute::Universal::to_hash(@_);
+    my $attribute = delete $hash->{attribute};
+    my $referent  = delete $hash->{referent};
+    my $payload   = delete $hash->{payload};
+    my @payload   = (ref $payload eq 'ARRAY') ? @$payload : ($payload);
     $Stash->{$referent} //= {};
-    $Stash->{$referent}->{$type} //= [];
-
-    push @{ $Stash->{$referent}->{$type} } => ref $data eq 'ARRAY'
-      ? @$data
-      : $data;
+    if ($attribute eq 'Format') {
+        $Stash->{$referent}->{InputFormat} //= [];
+        $Stash->{$referent}->{OutputFormat} //= [];
+        push @{ $Stash->{$referent}->{InputFormat} } => @payload;
+        push @{ $Stash->{$referent}->{OutputFormat} } => @payload;
+    } else {
+        $Stash->{$referent}->{$attribute} //= [];
+        push @{ $Stash->{$referent}->{$attribute} } => @payload;
+    }
 }
 
 sub _get_attributes {
@@ -507,22 +520,22 @@ sub _single_resource {
               }
               if $doc;
 
-            if ( $doc and exists $actopts{iformat} ) {
+            if ( exists $actopts{InputFormat} ) {
                 my %formats = map { ( $_->[0] => $_->[1] || undef ) } map {
                     m{^ \s* (\S+) (?: \s+ \( \s* (\S*) \s* \) )? \s* $}x
                       ? [ $1, $2 ]
                       : [$_]
-                } @{ $actopts{iformat} };
+                } @{ $actopts{InputFormat} };
                 $documentation->{$method}->{iformats} = \%formats;
                 $dont_serialize = 1;
             }
 
-            if ( exists $actopts{oformat} ) {
+            if ( exists $actopts{OutputFormat} ) {
                 my %formats = map { ( $_->[0] => $_->[1] || undef ) } map {
                     m{^ \s* (\S+) (?: \s+ \( \s* (\S*) \s* \) )? \s* $}x
                       ? [ $1, $2 ]
                       : [$_]
-                } @{ $actopts{oformat} };
+                } @{ $actopts{OutputFormat} };
                 my @formats = keys %formats;
                 $lfmtregex = join '|' => map quotemeta, @formats;
                 $lfmtregex = qr{(?:$lfmtregex)}x;
@@ -539,6 +552,8 @@ sub _single_resource {
             my $sub = _build_sub(
                 $dsl,
                 $method        => $coderef,
+                allowhtml      => delete $actopts{AllowHtml},
+                template       => delete $actopts{Template},
                 dont_serialize => $dont_serialize,
                 documentation  => $documentation,
                 captvar        => $captvar,
@@ -549,8 +564,8 @@ sub _single_resource {
                 $sub,
             );
             if (    $options{jsonp}
-                and not exists $actopts{iformat}
-                and not exists $actopts{oformat} )
+                and not exists $actopts{InputFormat}
+                and not exists $actopts{OutputFormat} )
             {
                 $dsl->app->add_route(
                     regexp  =>
@@ -607,22 +622,22 @@ sub _single_resource {
 
             my $dont_serialize = 0;
 
-            if ( $doc and exists $actopts{iformat} ) {
+            if ( exists $actopts{InputFormat} ) {
                 my %formats = map { ( $_->[0] => $_->[1] || undef ) } map {
                     m{^ \s* (\S+) (?: \s+ \( \s* (\S*) \s* \) )? \s* $}x
                       ? [ $1, $2 ]
                       : [$_]
-                } @{ $actopts{iformat} };
+                } @{ $actopts{InputFormat} };
                 $documentation->{$method}->{iformats} = \%formats;
                 $dont_serialize = 1;
             }
 
-            if ( exists $actopts{oformat} ) {
+            if ( exists $actopts{OutputFormat} ) {
                 my %formats = map { ( $_->[0] => $_->[1] || undef ) } map {
                     m{^ \s* (\S+) (?: \s+ \( \s* (\S*) \s* \) )? \s* $}x
                       ? [ $1, $2 ]
                       : [$_]
-                } @{ $actopts{oformat} };
+                } @{ $actopts{OutputFormat} };
                 my @formats = keys %formats;
                 $lfmtregex = join '|' => map quotemeta, @formats;
                 $lfmtregex = qr{(?:$lfmtregex)}x;
@@ -639,6 +654,8 @@ sub _single_resource {
             my $sub = _build_sub(
                 $dsl,
                 $method => $coderef,
+                allowhtml      => delete $actopts{AllowHtml},
+                template       => delete $actopts{Template},
                 dont_serialize => $dont_serialize,
                 documentation  => $documentation,
                 captvar        => $captvar,
@@ -648,7 +665,7 @@ sub _single_resource {
                 $method,
                 $sub,
             );
-            if ( $options{jsonp} and not exists $actopts{format} ) {
+            if ( $options{jsonp} and not exists $actopts{Format} ) {
                 $dsl->app->add_route(
                     regexp  =>
                       qr{^ $prefix /+ \Q$single\E \.(?<format>${method}p) $}xsi,
@@ -698,22 +715,22 @@ sub _single_resource {
 
             my $dont_serialize = 0;
 
-            if ( $doc and exists $actopts{iformat} ) {
+            if ( exists $actopts{InputFormat} ) {
                 my %formats = map { ( $_->[0] => $_->[1] || undef ) } map {
                     m{^ \s* (\S+) (?: \s+ \( \s* (\S*) \s* \) )? \s* $}x
                       ? [ $1, $2 ]
                       : [$_]
-                } @{ $actopts{iformat} };
+                } @{ $actopts{InputFormat} };
                 $documentation->{$method}->{iformats} = \%formats;
                 $dont_serialize = 1;
             }
 
-            if ( exists $actopts{oformat} ) {
+            if ( exists $actopts{OutputFormat} ) {
                 my %formats = map { ( $_->[0] => $_->[1] || undef ) } map {
                     m{^ \s* (\S+) (?: \s+ \( \s* (\S*) \s* \) )? \s* $}x
                       ? [ $1, $2 ]
                       : [$_]
-                } @{ $actopts{oformat} };
+                } @{ $actopts{OutputFormat} };
                 my @formats = keys %formats;
                 $lfmtregex = join '|' => map quotemeta, @formats;
                 $lfmtregex = qr{(?:$lfmtregex)}x;
@@ -730,6 +747,8 @@ sub _single_resource {
             my $sub = _build_sub(
                 $dsl,
                 $method => $coderef,
+                allowhtml      => delete $actopts{AllowHtml},
+                template       => delete $actopts{Template},
                 dont_serialize => $dont_serialize,
                 documentation  => $documentation,
                 captvar        => $captvar,
@@ -739,7 +758,7 @@ sub _single_resource {
                 $method,
                 $sub,
             );
-            if ( $options{jsonp} and not exists $actopts{format} ) {
+            if ( $options{jsonp} and not exists $actopts{Format} ) {
                 $dsl->app->add_route(
                     regexp  =>
                       qr{^ $prefix /+ \Q$plural\E \.(?<format>${method}p) $}xsi,
@@ -942,7 +961,7 @@ register_hook "on_$_" for (400..599);
 
 register_plugin;
 
-no warnings 'redefine';
+1;
 
 =attr Format
 
@@ -960,25 +979,6 @@ A content-type for the L<documentation|Dancer2::Plugin::CRUD::Documentation> may
     resource("photo",
         index => sub :Format(png (image/png)) { ... }
     );
-
-=cut
-
-sub UNIVERSAL::Format : ATTR(CODE,RAWDATA,BEGIN) {
-    _add_attribute( iformat => @_ );
-    _add_attribute( oformat => @_ );
-}
-
-sub UNIVERSAL::InputFormat : ATTR(CODE,RAWDATA,BEGIN) {
-    _add_attribute( iformat => @_ );
-}
-
-sub UNIVERSAL::OutputFormat : ATTR(CODE,RAWDATA,BEGIN) {
-    _add_attribute( oformat => @_ );
-}
-
-1;
-
-__END__
 
 =head1 DESCRIPTION
 
