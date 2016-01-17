@@ -163,16 +163,6 @@ sub _build_sub {
       @$stack;
     my $cfg = $stack->[-1];
 
-    my $schema = $opts{schema};
-    $schema = $schema->[0] if ref $schema eq 'ARRAY';
-    if ( ref $schema ) {
-        load_class('JSON::Schema');
-        $schema = JSON::Schema->new($schema);
-    }
-    else {
-        $schema = undef;
-    }
-
     my $name = join '/' => map { $_->{single} } @$stack;
 
     my $has_input = ($method =~ m{^create|update|patch$}i);
@@ -217,14 +207,6 @@ sub _build_sub {
                 $sub->( $app, $params{ $captvar || '' } );
             }
 
-            if ($has_input and $schema) {
-                my $result = $schema->validate( $app->request->data );
-                unless ($result) {
-                    my $msg = join ', ',
-                      map { $_->property . ': ' . $_->message } $result->errors;
-                    _throw( $dsl, 400 => $msg );
-                }
-            }
         }
         catch {
             $dsl->debug("Error in $name: $_");
@@ -530,7 +512,6 @@ sub _single_resource {
             my $sub = _build_sub(
                 $dsl,
                 $method        => $coderef,
-                schema         => delete $actopts{schema},
                 dont_serialize => $dont_serialize,
                 documentation  => $documentation,
                 captvar        => $captvar,
@@ -631,7 +612,6 @@ sub _single_resource {
             my $sub = _build_sub(
                 $dsl,
                 $method => $coderef,
-                schema  => delete $actopts{schema},
                 dont_serialize => $dont_serialize,
                 documentation  => $documentation,
                 captvar        => $captvar,
@@ -723,7 +703,6 @@ sub _single_resource {
             my $sub = _build_sub(
                 $dsl,
                 $method => $coderef,
-                schema  => delete $actopts{schema},
                 dont_serialize => $dont_serialize,
                 documentation  => $documentation,
                 captvar        => $captvar,
@@ -968,19 +947,6 @@ sub UNIVERSAL::InputFormat : ATTR(CODE,RAWDATA,BEGIN) {
 
 sub UNIVERSAL::OutputFormat : ATTR(CODE,RAWDATA,BEGIN) {
     _add_attribute( oformat => @_ );
-}
-
-=attr RequestSchema
-
-Validation schema for the request message body. Must be valid in accordance to the L<JSON Validation Schema|http://json-schema.org/latest/json-schema-validation.html>.
-
-When L<JSON::Schema> is available, incomming data will be automagically validated againt the request schema.
-
-=cut
-
-sub UNIVERSAL::RequestSchema : ATTR(CODE,BEGIN) {
-    _add_attribute( schema => @_ );
-    Dancer2::Plugin::CRUD::Documentation::_add_attr_doc( request_schema => @_ );
 }
 
 1;
