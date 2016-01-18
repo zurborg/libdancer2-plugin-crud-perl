@@ -682,7 +682,7 @@ sub _single_resource {
 
             my $sub = _build_sub(
                 $dsl,
-                $method => $coderef,
+                $method        => $coderef,
                 allowhtml      => delete $actopts{AllowHtml},
                 template       => delete $actopts{Template},
                 schema         => delete $actopts{RequestSchema},
@@ -776,7 +776,7 @@ sub _single_resource {
 
             my $sub = _build_sub(
                 $dsl,
-                $method => $coderef,
+                $method        => $coderef,
                 allowhtml      => delete $actopts{AllowHtml},
                 template       => delete $actopts{Template},
                 schema         => delete $actopts{RequestSchema},

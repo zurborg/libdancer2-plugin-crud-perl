@@ -36,7 +36,7 @@ sub deserialize {
 
 sub serialize {
     my ( $self, $entity ) = @_;
-    
+
     die "entity is still a ".ref($entity) if ref $entity;
     return $entity;
 
