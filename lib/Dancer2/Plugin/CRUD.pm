@@ -145,6 +145,12 @@ sub _throw {
 
     my $serializer = $resp->serializer;
 
+    if (my $reftype = ref $message) {
+        $dsl->error("error message is not a string but a $reftype in ".(caller)[1]." line ".(caller)[2] );
+        $dsl->status(500);
+        $dsl->halt;
+    }
+
     my $err = $resp->error(
         %extras,
         ( message    => $message ),
