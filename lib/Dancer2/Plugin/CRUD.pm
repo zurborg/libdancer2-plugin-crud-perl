@@ -11,6 +11,7 @@ use Text::Pluralize          ();
 use Class::Method::Modifiers ();
 use Class::Load qw(try_load_class load_class);
 use Attribute::Universal 0.003
+    RequestSchema => 'CODE,BEGIN',
     Format => 'CODE,RAWDATA,BEGIN',
     InputFormat => 'CODE,RAWDATA,BEGIN',
     OutputFormat => 'CODE,RAWDATA,BEGIN',
@@ -183,6 +184,13 @@ sub _build_sub {
 
     my $read_path = $opts{documentation}->{read}->{Path};
 
+    if ($opts{schema}) {
+        unless(try_load_class('JSON::Schema')) {
+            $dsl->debug("Warning: JSON::Schema not available");
+            delete $opts{schema};
+        }
+    }
+
     return subname $method => sub {
         my $app      = shift;
         my $captures = $app->request->captures || {};
@@ -221,6 +229,22 @@ sub _build_sub {
             $dsl->debug("Error in $name: $_");
             _throw( $dsl, 500 => $_ );
         };
+
+        if ($has_input and $opts{schema}) {
+            my $input     = $app->request->{data};
+            my $schema    = $opts{schema}->{content}->[0];
+            my $validator = JSON::Schema->new($schema);
+            my $result    = $validator->validate($input);
+            unless ($result) {
+                my $errors = {
+                    map {
+                        ($_->{property} => $_->{message})
+                    } $result->errors
+                };
+                $dsl->status(400);
+                return { errors => $errors };
+            }
+        }
 
         my @return;
 
@@ -552,6 +576,7 @@ sub _single_resource {
                 $method        => $coderef,
                 allowhtml      => delete $actopts{AllowHtml},
                 template       => delete $actopts{Template},
+                schema         => delete $actopts{RequestSchema},
                 dont_serialize => $dont_serialize,
                 documentation  => $documentation,
                 captvar        => $captvar,
@@ -654,6 +679,7 @@ sub _single_resource {
                 $method => $coderef,
                 allowhtml      => delete $actopts{AllowHtml},
                 template       => delete $actopts{Template},
+                schema         => delete $actopts{RequestSchema},
                 dont_serialize => $dont_serialize,
                 documentation  => $documentation,
                 captvar        => $captvar,
@@ -747,6 +773,7 @@ sub _single_resource {
                 $method => $coderef,
                 allowhtml      => delete $actopts{AllowHtml},
                 template       => delete $actopts{Template},
+                schema         => delete $actopts{RequestSchema},
                 dont_serialize => $dont_serialize,
                 documentation  => $documentation,
                 captvar        => $captvar,
