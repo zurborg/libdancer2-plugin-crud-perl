@@ -78,6 +78,8 @@ require tests;
     resource( error => index => sub { die "meh\n" } );
 
     resource( throw => index => sub { throw (400 => "meh"); die "BAD!!!"; } );
+
+    resource( dump => index => sub { dump_documentation() } );
 }
 
 my $PT = boot('Webservice');
@@ -263,5 +265,8 @@ dotest(
         );
     }
 );
+
+#my $R = request( $PT, GET => '/dump.dump' );
+#note($R->content);
 
 done_testing();

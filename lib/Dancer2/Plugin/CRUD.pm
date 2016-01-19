@@ -855,6 +855,28 @@ register
 
 our %RAWDOC;
 
+sub get_doc_till_here {
+    use Clone ();
+    my $doctemp = Clone::clone([ reverse @$docstack ]);
+    $docstack = [];
+    my $parents = [];
+    foreach my $child (@$doctemp) {
+        foreach my $method (map{$child->{$_}}grep{exists$child->{$_}} qw(index create read update delete update patch)) {
+            foreach my $opt (keys %{$method->{opts}}) {
+                $method->{$opt} = $method->{opts}->{$opt}->{content};
+            }
+            delete $method->{opts};
+        }
+        if (my $parent = $child->{parent}) {
+            $parent->{children} //= [];
+            push @{ $parent->{children} } => $child;
+        } else {
+            push @$parents => $child;
+        }
+    }
+    return $parents;
+}
+
 register publish_apiblueprint => (
     sub {
         my ( $dsl, $path, %options ) = @_;
