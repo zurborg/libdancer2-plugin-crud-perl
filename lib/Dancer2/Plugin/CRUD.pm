@@ -20,6 +20,7 @@ use Attribute::Universal 0.003
 
 use Dancer2::Plugin::CRUD::Documentation ();
 use Dancer2::Plugin::CRUD::Constants qw(:all);
+use Dancer2::Plugin::CRUD::Response;
 use Scalar::Util qw(blessed refaddr);
 use HTTP::Status qw(status_message);
 use HTTP::Exception ();
@@ -166,6 +167,14 @@ sub _throw {
     return $err;
 }
 
+sub _return {
+    my ($dsl, $status, $entity) = @_;
+    die Dancer2::Plugin::CRUD::Response->new({
+        status => $status,
+        entity => $entity,
+    });
+}
+
 sub _make_path {
     my ($app, $path, %args) = @_;
     map { $path =~ s{ \{ \Q$_\E \} }{$args{$_}}sgx } keys %args;
@@ -236,6 +245,8 @@ sub _build_sub {
             _throw( $dsl, 500 => $_ );
         };
 
+        my @return;
+
         if ($has_input and $opts{schema}) {
             my $input     = $app->request->{data};
             my $schema    = $opts{schema}->{content}->[0];
@@ -247,20 +258,22 @@ sub _build_sub {
                         ($_->{property} => $_->{message})
                     } $result->errors
                 };
-                $dsl->status(400);
-                return { errors => $errors };
+                @return = (400 => { errors => $errors });
             }
         }
 
-        my @return;
-
-        try {
-            @return = $sub->( $app, %params );
+        unless (@return) {
+            try {
+                @return = $sub->( $app, %params );
+            } catch {
+                if (ref $_ and $_->isa('Dancer2::Plugin::CRUD::Response')) {
+                    @return = $_->return;
+                } else {
+                    $dsl->debug("Error in $name: $_");
+                    _throw( $dsl, 500 => $_ );
+                }
+            };
         }
-        catch {
-            $dsl->debug("Error in $name: $_");
-            _throw( $dsl, 500 => $_ );
-        };
 
         if (@return > 1 and defined $return[0] and not ref $return[0] and $return[0] =~ m{^\d{3}$} ) {
             $app->response->status(shift(@return));
@@ -965,6 +978,19 @@ register throw => (
     },
     { is_global => 1 }
 );
+
+register return_now => (sub {
+    my $dsl = shift;
+    if (@_ == 2) {
+        _return($dsl, @_);
+    } elsif (@_ == 1) {
+        _return($dsl, undef, @_);
+    } else {
+        _return($dsl);
+    }
+}, {
+    is_global => 1
+});
 
 register catch_http_exception => (
     sub {
