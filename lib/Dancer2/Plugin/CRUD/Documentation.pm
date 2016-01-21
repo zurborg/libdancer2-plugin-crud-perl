@@ -35,7 +35,7 @@ use Attribute::Universal
     RequestHeaders  => 'CODE,RAWDATA,BEGIN',
     ResponseHeaders => 'CODE,RAWDATA,BEGIN';
 
-use Text::API::Blueprint qw(Compile);
+use Text::API::Blueprint qw(Compile Concat);
 
 use JSON ();
 use YAML ();
@@ -75,35 +75,68 @@ For internal use only.
 
 =cut
 
-sub _apib_requests {
+sub _apib_assets {
     my ($def) = @_;
-    my $requsts = [];
+    my $assets = [];
     if (exists $def->{iformats}) {
         return [],
     }
     if (exists $def->{oformats}) {
         return [],
     }
-    push @$requsts => (json => {
+    push @$assets => ('Request JSON' => {
         type => 'application/json',
         json => ['example-data'],
     });
-    #push @$requsts => (yaml => {
-    #    type => 'text/yaml',
-    #    yaml => ['example-data'],
-    #});
-    return $requsts;
+    push @$assets => ('Response 200' => {
+        type => 'application/json',
+        json => ['example-data'],
+    });
+
+    push @$assets => ('Request YAML' => {
+        type => 'text/yaml',
+        yaml => ['example-data'],
+    });
+    push @$assets => ('Response 200' => {
+        type => 'text/yaml',
+        yaml => ['example-data'],
+    });
+    return $assets;
 }
 
 sub _apib_resource {
-    my ($method, $def) = @_;
+    my ($method, $def, $res) = @_;
+    my @captvars = map {( $_ => {
+        type => 'string',
+        example => 123,
+    })} @{$res->{captvars}};
+    if ($def->{hasid}) {
+        push @captvars => ($res->{captvar} => {
+            type => 'string',
+            example => 456,
+        });
+    }
+
     return {
-        method => $method,
+        #identifier => $method,
         uri => $def->{Path},
+        description => Concat(@{$def->{Description}}),
+        parameters => [
+            @captvars,
+            format => {
+                enum => 'string',
+                members => [
+                    yml => 'YAML',
+                    json => 'JSON',
+                ],
+                example => 'json',
+            },
+        ],
         actions => [{
+            description => "place auto-generated information here ( `".$def->{Path}."` )",
+            identifier => ucfirst($method),
             method => uc($Dancer2::Plugin::CRUD::Constants::trigger_to_method{$method}),
-            requests => _apib_requests($def),
-            #responses => _apib_responses($def),
+            assets => _apib_assets($def),
         }]
     };
 }
@@ -112,8 +145,8 @@ sub _apib_resources {
     my $doc = shift;
     my $resources = [];
     foreach my $method (qw(index create read update patch delete)) {
-        next unless exists $doc->{$method};
-        push @$resources => _apib_resource($method, $doc->{$method});
+        next unless exists $doc->{$method} and defined $doc->{$method} and ref $doc->{$method} eq 'HASH' and keys %{$doc->{$method}};
+        push @$resources => _apib_resource($method, $doc->{$method}, $doc);
     }
     return $resources;
 }
@@ -134,13 +167,12 @@ sub generate_apiblueprint {
     my ($docs, %info) = @_;
     my $groups = _apib_groups($docs);
     my $Compile = {
-        host => '',
-        name => '',
-        description => '',
+        name => 'Title of generated API blueprint file',
+        description => "And the description of it",
         %info,
         groups => $groups,
     };
-    open(my $fh, '>api.md') or die $!;
+    open(my $fh, '>api.apib') or die $!;
     $Text::API::Blueprint::Autoprint = $fh;
     Compile($Compile);
     close $fh;
