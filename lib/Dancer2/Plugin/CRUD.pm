@@ -484,6 +484,10 @@ sub _single_resource {
     };
     push @$stack => $cfg;
 
+    my @captvars = map { $_->{captvar} } grep { exists $_->{captvar} } @$stack;
+
+    $documentation->{captvars} = \@captvars;
+
     $documentation->{name} =
       join ' of ' => reverse map { $_->{single} } @$stack;
 
