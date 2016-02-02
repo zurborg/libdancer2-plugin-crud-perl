@@ -3,21 +3,46 @@
 use lib 't';
 require tests;
 
-#plan(skip_all => 'work in progress');
-
 {
     package Webservice;
     use Dancer2;
     use Dancer2::Plugin::CRUD;
     use Dancer2::Plugin::CRUD::Documentation;
-    
+
     resource({
         'person(s)' => {
             description => 'this is sparta',
-            index => sub :
-                Description(foo)
+            index => sub
+                :Description(foo)
+                :Description(bar)
+                :RequestHeader(foo: bar)
+                :RequestHeader(bar: baz)
+                :RequestBody({
+                    hello=>'world'
+                })
+                :RequestBody({
+                    world=>'hello'
+                })
+                :ResponseHeader(abc: def)
+                :ResponseHeader(def: ghi)
+                :ResponseBody([1,2,3])
+                :ResponseBody([4,5,6])
+                :RequestSchema({type=>'object'})
                 { ... },
-            read => sub {...},
+            read => sub :
+                InputFormat(png)
+                InputFormat(jpg (image/jpg)) #/
+                {...},
+            update => sub :
+                OutputFormat(html)
+                {...},
+            patch => sub :
+                OutputFormat(abc)
+                OutputFormat(def)
+                {...},
+            delete => sub :
+                Format(xml)
+                {...},
 
             -single => {
                 bar => {
@@ -34,9 +59,12 @@ require tests;
 
                     single_id => {
                         baz => {
-                            index => sub :
-                                { ... },
-
+                            index => sub { ... },
+                            read => sub { ... },
+                            create => sub { ... },
+                            update => sub { ... },
+                            patch => sub { ... },
+                            delete => sub { ... },
                         }
                     }, # single_id
                 } # bar
@@ -44,29 +72,240 @@ require tests;
         } # person(s)
     });
 
-    our $doc = Dancer2::Plugin::CRUD::get_doc_till_here();
+    our $doc = generate_documentation();
 }
 
-sub _show;
-sub _show {
-    my $docs = shift // return;
-    foreach my $doc (@$docs) {
-        explain({
-            name => $doc->{name},
-            #idtype => $doc->{idtype},
-            (map { $_ => $doc->{$_} } qw(index create read update patch delete)),
-        });
-        #note(explain([keys %$doc]));
-        _show($doc->{children});
-    }
+my $md = Dancer2::Plugin::CRUD::Documentation::generate_apiblueprint($Webservice::doc);
+
+if ($ENV{DUMP_APIB}) {
+    print STDERR $md;
+    plan(skip_all => 'apib dumped');
+    exit;
 }
 
-#_show ($Webservice::doc);
+plan(tests => 1);
 
-explain($Webservice::doc);
+tdt(''.$md, ''.join('' => <DATA>), 'x');
 
-explain(Dancer2::Plugin::CRUD::Documentation::generate_apiblueprint($Webservice::doc));
+done_testing;
 
-ok(1);
+__DATA__
+FORMAT: 1A8
 
-done_testing();
+# Title of generated API blueprint file
+
+And the description of it
+
+# Group person
+
+## /persons.{format}
+
+foo
+
+bar
+
++ Parameters
+
+    + format: (enum[string], optional)
+    
+        + Members
+        
+            + `json` - application/json
+            + `yml` - text/yaml
+
+### Index [GET]
+
+Request Schema
+
+```
+{
+   "type" : "object"
+}
+
+```
+
++ Request JSON (application/json)
+
+    + Headers
+    
+            Foo: bar
+            Bar: baz
+    
+    + Body
+    
+        ```json
+        {
+           "hello" : "world"
+        }
+        
+        ```
+
++ Request JSON (application/json)
+
+    + Headers
+    
+            Foo: bar
+            Bar: baz
+    
+    + Body
+    
+        ```json
+        {
+           "world" : "hello"
+        }
+        
+        ```
+
++ Response 200 (application/json)
+
+    + Headers
+    
+            Abc: def
+            Def: ghi
+    
+    + Body
+    
+        ```json
+        [
+           1,
+           2,
+           3
+        ]
+        
+        ```
+
++ Response 200 (application/json)
+
+    + Headers
+    
+            Abc: def
+            Def: ghi
+    
+    + Body
+    
+        ```json
+        [
+           4,
+           5,
+           6
+        ]
+        
+        ```
+
++ Request YAML (text/yaml)
+
+    + Headers
+    
+            Foo: bar
+            Bar: baz
+    
+    + Body
+    
+        ```yaml
+        ---
+        hello: world
+        
+        ```
+
++ Request YAML (text/yaml)
+
+    + Headers
+    
+            Foo: bar
+            Bar: baz
+    
+    + Body
+    
+        ```yaml
+        ---
+        world: hello
+        
+        ```
+
++ Response 200 (text/yaml)
+
+    + Headers
+    
+            Abc: def
+            Def: ghi
+    
+    + Body
+    
+        ```yaml
+        ---
+        - 1
+        - 2
+        - 3
+        
+        ```
+
++ Response 200 (text/yaml)
+
+    + Headers
+    
+            Abc: def
+            Def: ghi
+    
+    + Body
+    
+        ```yaml
+        ---
+        - 4
+        - 5
+        - 6
+        
+        ```
+
+## /person/{person_id}.{format}
+
+
+
++ Parameters
+
+    + person_id: `456` (string, optional)
+    
+    + format: (enum[string], optional)
+    
+        + Members
+        
+            + `json` - application/json
+            + `yml` - text/yaml
+
+### Read [GET]
+
+## /person/{person_id}.html
+
+
+
++ Parameters
+
+    + person_id: `456` (string, optional)
+
+### Update [PUT]
+
+## /person/{person_id}.{format}
+
+
+
++ Parameters
+
+    + person_id: `456` (string, optional)
+    
+    + format: (enum[string], optional)
+    
+        + Members
+        
+            + `abc` - abc
+            + `def` - def
+
+### Patch [PATCH]
+
+## /person/{person_id}.xml
+
+
+
++ Parameters
+
+    + person_id: `456` (string, optional)
+
+### Delete [DELETE]
