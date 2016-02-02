@@ -861,13 +861,11 @@ sub _single_resource {
     return @routes;
 }
 
-register
-  resource => \&_single_resource,
-  { is_global => 1 };
+register resource => \&_single_resource, { is_global => 1 };
 
-our %RAWDOC;
 
-sub get_doc_till_here {
+sub _generate_documentation {
+    my ($flat) = @_;
     use Clone ();
     my $doctemp = Clone::clone([ reverse @$docstack ]);
     $docstack = [];
@@ -882,41 +880,18 @@ sub get_doc_till_here {
         if (my $parent = $child->{parent}) {
             $parent->{children} //= [];
             push @{ $parent->{children} } => $child;
-        } else {
+        } elsif (!$flat) {
+            push @$parents => $child;
+        }
+        if ($flat) {
             push @$parents => $child;
         }
     }
     return $parents;
 }
 
-register publish_apiblueprint => (
-    sub {
-        my ( $dsl, $path, %options ) = @_;
+register generate_documentation => \&_generate_documentation, { is_global => 1 };
 
-        my $id = delete $options{id};
-
-        my $doc = Dancer2::Plugin::CRUD::Documentation::generate_apiblueprint(
-            [ reverse @$docstack ], %options );
-
-        $RAWDOC{$id} = $doc if $id;
-
-        return $dsl->get(
-            qr{^ \Q$path\E \. (?<format> md ) $}x => subname(get_apiblueprint => sub {
-                my $app = shift;
-
-                my $format = $app->request->captures->{format};
-                if ( $format eq 'md' ) {
-                    return $doc;
-                }
-                else {
-                    _throw( $dsl, 404 => "unsupported format requested: $format" );
-                }
-            })
-        );
-
-    },
-    { is_global => 1 }
-);
 
 Class::Method::Modifiers::around(
     'Dancer2::Core::DSL::_normalize_route' => sub {
