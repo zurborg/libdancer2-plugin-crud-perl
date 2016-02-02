@@ -1,5 +1,6 @@
 use strictures 1;
 use Test::Most qw(!pass);
+use Text::Diff;
 use Plack::Test;
 use HTTP::Request::Common ();
 use Class::Load qw(try_load_class);
@@ -26,6 +27,16 @@ sub islc {
 sub isntlc {
     @_ = map { defined($_) ? lc($_) : undef } @_;
     goto &isnt;
+}
+
+sub tdt { # test with diff text
+    my ($is, $should) = (shift, shift);
+    if ($is eq $should) {
+        goto &Test::More::pass;
+    } else {
+        print Text::Diff::diff(\$should, \$is);
+        goto &Test::More::BAIL_OUT;
+    }
 }
 
 sub header {
