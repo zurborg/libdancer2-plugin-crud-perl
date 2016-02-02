@@ -91,23 +91,45 @@ sub _apib_assets {
     if (exists $def->{oformats}) {
         return [],
     }
-    push @$assets => ('Request JSON' => {
-        type => 'application/json',
-        json => ['example-data'],
-    });
-    push @$assets => ('Response 200' => {
-        type => 'application/json',
-        json => ['example-data'],
-    });
 
-    push @$assets => ('Request YAML' => {
-        type => 'text/yaml',
-        yaml => ['example-data'],
-    });
-    push @$assets => ('Response 200' => {
-        type => 'text/yaml',
-        yaml => ['example-data'],
-    });
+    my @RequestHeaders  = map {split(m{\s*:\s*}, $_, 2)} @{ $def->{RequestHeader} };
+    my @ResponseHeaders = map {split(m{\s*:\s*}, $_, 2)} @{ $def->{ResponseHeader} };
+
+    my @RequestBody  = ref $def->{RequestBody}  ? @{$def->{RequestBody}}  : undef;
+    my @ResponseBody = ref $def->{ResponseBody} ? @{$def->{ResponseBody}} : undef;
+
+    foreach my $data (@RequestBody) {
+        push @$assets => ('Request JSON' => {
+            type => 'application/json',
+            (json => $data) x!!defined$data,
+            headers => \@RequestHeaders,
+        });
+    }
+
+    foreach my $data (@ResponseBody) {
+        push @$assets => ('Response 200' => {
+            type => 'application/json',
+            (json => $data) x!!defined$data,
+            headers => \@ResponseHeaders,
+        });
+    }
+
+    foreach my $data (@RequestBody) {
+        push @$assets => ('Request YAML' => {
+            type => 'text/yaml',
+            (yaml => $data) x!!defined$data,
+            headers => \@RequestHeaders,
+        });
+    }
+
+    foreach my $data (@ResponseBody) {
+        push @$assets => ('Response 200' => {
+            type => 'text/yaml',
+            (yaml => $data) x!!defined$data,
+            headers => \@ResponseHeaders,
+        });
+    }
+
     return $assets;
 }
 
@@ -123,6 +145,30 @@ sub _apib_resource {
             example => 456,
         });
     }
+    unless (ref $def->{oformats} and keys %{$def->{oformats}} == 1) {
+        my %formats = (
+            json => 'application/json',
+            yml => 'text/yaml',
+        );
+        if (ref $def->{oformats}) {
+            %formats = %{$def->{oformats}};
+            map { $formats{$_} //= $_ } keys %formats;
+        }
+        push @captvars => (
+            format => {
+                enum => 'string',
+                members => [ map {( $_ => $formats{$_} )} sort keys %formats ],
+            }
+        );
+    }
+
+    my @desc;
+
+    if (my $schema = ref ($def->{schema}) ? Text::API::Blueprint::_json($def->{schema}) : undef) {
+        push @desc => 'Request Schema';
+        push @desc => Text::API::Blueprint::Code($schema);
+    }
+
 
     return {
         #identifier => $method,
@@ -130,17 +176,9 @@ sub _apib_resource {
         description => Concat(@{$def->{Description}}),
         parameters => [
             @captvars,
-            format => {
-                enum => 'string',
-                members => [
-                    yml => 'YAML',
-                    json => 'JSON',
-                ],
-                example => 'json',
-            },
         ],
         actions => [{
-            description => "place auto-generated information here ( `".$def->{Path}."` )",
+            description => Concat(@desc),
             identifier => ucfirst($method),
             method => uc($Dancer2::Plugin::CRUD::Constants::trigger_to_method{$method}),
             assets => _apib_assets($def),
@@ -179,11 +217,7 @@ sub generate_apiblueprint {
         %info,
         groups => $groups,
     };
-    open(my $fh, '>api.apib') or die $!;
-    $Text::API::Blueprint::Autoprint = $fh;
-    Compile($Compile);
-    close $fh;
-    return $Compile;
+    return Compile($Compile);
 }
 
 1;
