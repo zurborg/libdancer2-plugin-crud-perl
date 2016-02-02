@@ -28,12 +28,7 @@ List of headers that appears in the response. (one header per line)
 
 =cut
 
-use Attribute::Universal
-    Description     => 'CODE,RAWDATA,BEGIN',
-    RequestBody     => 'CODE,BEGIN',
-    ResponseBody    => 'CODE,BEGIN',
-    RequestHeaders  => 'CODE,RAWDATA,BEGIN',
-    ResponseHeaders => 'CODE,RAWDATA,BEGIN';
+use Attribute::Universal 0.003;
 
 use Text::API::Blueprint qw(Compile Concat);
 
@@ -44,6 +39,18 @@ use Data::Dumper ();
 # VERSION
 
 my $Stash = {};
+
+sub import {
+    my $caller = scalar caller;
+    Attribute::Universal->import_into($caller
+    ,   Description     => 'CODE,RAWDATA,BEGIN'
+    ,   RequestBody     => 'CODE,BEGIN'
+    ,   ResponseBody    => 'CODE,BEGIN'
+    ,   RequestHeader   => 'CODE,RAWDATA,BEGIN'
+    ,   ResponseHeader  => 'CODE,RAWDATA,BEGIN'
+    );
+    return;
+}
 
 sub ATTRIBUTE {
     my $hash = Attribute::Universal::to_hash(@_);

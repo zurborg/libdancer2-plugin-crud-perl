@@ -12,11 +12,11 @@ use Class::Method::Modifiers ();
 use Class::Load qw(try_load_class load_class);
 use Attribute::Universal 0.003
     RequestSchema => 'CODE,BEGIN',
-    Format => 'CODE,RAWDATA,BEGIN',
-    InputFormat => 'CODE,RAWDATA,BEGIN',
-    OutputFormat => 'CODE,RAWDATA,BEGIN',
-    AllowHtml => 'CODE,RAWDATA,BEGIN',
-    Template => 'CODE,RAWDATA,BEGIN';
+    Format        => 'CODE,RAWDATA,BEGIN',
+    InputFormat   => 'CODE,RAWDATA,BEGIN',
+    OutputFormat  => 'CODE,RAWDATA,BEGIN',
+    AllowHtml     => 'CODE,RAWDATA,BEGIN',
+    Template      => 'CODE,RAWDATA,BEGIN';
 
 use Dancer2::Plugin::CRUD::Documentation ();
 use Dancer2::Plugin::CRUD::Constants qw(:all);
@@ -249,8 +249,7 @@ sub _build_sub {
 
         if ($has_input and $opts{schema}) {
             my $input     = $app->request->{data};
-            my $schema    = $opts{schema}->{content}->[0];
-            my $validator = JSON::Schema->new($schema);
+            my $validator = JSON::Schema->new($opts{schema});
             my $result    = $validator->validate($input);
             unless ($result) {
                 my $errors = {
@@ -552,6 +551,8 @@ sub _single_resource {
                 $options{caller}, 'action' );
             my $doc     = _get_documentation($coderef) || {};
             my %actopts = _get_attributes($coderef);
+            my $schema  = delete $actopts{RequestSchema};
+            $schema = $schema->{content}->[0] if ref $schema;
 
             my $lfmtregex = $fmtregex;
             my $dont_serialize = 0;
@@ -562,6 +563,7 @@ sub _single_resource {
                 PathP => "$pathbase/$single/{$captvar}.${method}p?{callback}",
                 hasid => 1,
                 opts  => \%actopts,
+                schema => $schema,
               }
               if $doc;
 
@@ -599,7 +601,7 @@ sub _single_resource {
                 $method        => $coderef,
                 allowhtml      => delete $actopts{AllowHtml},
                 template       => delete $actopts{Template},
-                schema         => delete $actopts{RequestSchema},
+                schema         => $schema,
                 dont_serialize => $dont_serialize,
                 documentation  => $documentation,
                 captvar        => $captvar,
@@ -654,6 +656,8 @@ sub _single_resource {
                 $options{caller}, 'action' );
             my $doc     = _get_documentation($coderef) || {};
             my %actopts = _get_attributes($coderef);
+            my $schema  = delete $actopts{RequestSchema};
+            $schema = $schema->{content}->[0] if ref $schema;
 
             my $lfmtregex = $fmtregex;
 
@@ -663,6 +667,7 @@ sub _single_resource {
                 PathP => "$pathbase/$single.${method}p?{callback}",
                 hasid => 0,
                 opts  => \%actopts,
+                schema => $schema,
               }
               if $doc;
 
@@ -702,7 +707,7 @@ sub _single_resource {
                 $method        => $coderef,
                 allowhtml      => delete $actopts{AllowHtml},
                 template       => delete $actopts{Template},
-                schema         => delete $actopts{RequestSchema},
+                schema         => $schema,
                 dont_serialize => $dont_serialize,
                 documentation  => $documentation,
                 captvar        => $captvar,
@@ -748,6 +753,8 @@ sub _single_resource {
                 $options{caller}, 'action' );
             my $doc     = _get_documentation($coderef) || {};
             my %actopts = _get_attributes($coderef);
+            my $schema  = delete $actopts{RequestSchema};
+            $schema = $schema->{content}->[0] if ref $schema;
 
             my $lfmtregex = $fmtregex;
 
@@ -757,6 +764,7 @@ sub _single_resource {
                 PathP => "$pathbase/$plural.${method}p?{callback}",
                 hasid => 0,
                 opts  => \%actopts,
+                schema => $schema,
               }
               if $doc;
 
@@ -796,7 +804,7 @@ sub _single_resource {
                 $method        => $coderef,
                 allowhtml      => delete $actopts{AllowHtml},
                 template       => delete $actopts{Template},
-                schema         => delete $actopts{RequestSchema},
+                schema         => $schema,
                 dont_serialize => $dont_serialize,
                 documentation  => $documentation,
                 captvar        => $captvar,
