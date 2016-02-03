@@ -3,7 +3,7 @@
 use Dancer2::Plugin::CRUD::Test;
 
 use lib 't';
-require tests;
+use tests;
 
 soft_require('JSON::Schema');
 

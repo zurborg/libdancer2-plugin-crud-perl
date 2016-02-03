@@ -1,7 +1,7 @@
 #!perl -T
 
 use lib 't';
-require tests;
+use tests;
 
 {
 

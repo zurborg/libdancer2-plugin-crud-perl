@@ -1,7 +1,7 @@
 #!perl
 
 use lib 't';
-require tests;
+use tests;
 
 package Webservice {
 

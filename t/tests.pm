@@ -1,9 +1,23 @@
-use strictures 1;
-use Test::Most qw(!pass);
-use Text::Diff;
-use Plack::Test;
+package tests;
+
+use strictures 2;
+use Test::Most;
+use Text::Diff ();
+use Plack::Test ();
 use HTTP::Request::Common ();
 use Class::Load qw(try_load_class);
+use Import::Into;
+use Exporter;
+
+our @EXPORT = qw(soft_require islc isntlc tdt header boot dotest request form_request OPTIONS);
+
+sub import {
+    my $caller = scalar caller;
+    strictures->import::into($caller);
+    Test::Most->import::into($caller, '!pass');
+    Plack::Test->import::into($caller);
+    goto &Exporter::import;
+}
 
 sub soft_require {
     foreach my $class (@_) {
