@@ -52,6 +52,10 @@ sub import {
     return;
 }
 
+=for Pod::Coverage ATTRIBUTE
+
+=cut
+
 sub ATTRIBUTE {
     my $hash = Attribute::Universal::to_hash(@_);
     my $referent = delete $hash->{referent};

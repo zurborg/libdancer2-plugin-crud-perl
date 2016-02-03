@@ -64,6 +64,10 @@ sub _camelize {
     return ucfirst($str);
 }
 
+=for Pod::Coverage ATTRIBUTE
+
+=cut
+
 sub ATTRIBUTE {
     my $hash = Attribute::Universal::to_hash(@_);
     if ($hash->{attribute} eq 'Format') {

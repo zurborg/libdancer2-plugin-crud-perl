@@ -14,6 +14,10 @@ has '+content_type' => (
     default => sub {'text/html'},
 );
 
+=method deserialize
+
+=cut
+
 sub deserialize {
     my ( $self, $content ) = @_;
 
@@ -33,6 +37,10 @@ sub deserialize {
 
     return $data;
 }
+
+=method serialize
+
+=cut
 
 sub serialize {
     my ( $self, $entity ) = @_;

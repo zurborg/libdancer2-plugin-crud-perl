@@ -6,6 +6,10 @@ use Moo 2;
 use Dancer2::Core::Types;
 use Dancer2::Core::HTTP;
 
+=attr status
+
+=cut
+
 has status => (
     is      => 'ro',
     isa     => Num,
@@ -14,9 +18,17 @@ has status => (
     coerce  => sub { Dancer2::Core::HTTP->status(shift) },
 );
 
+=attr entity
+
+=cut
+
 has entity => (
     is => 'ro',
 );
+
+=method return
+
+=cut
 
 sub return {
     my $self = shift;
