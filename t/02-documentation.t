@@ -15,16 +15,16 @@ require tests;
             index => sub
                 :Description(foo)
                 :Description(bar)
-                :RequestHeader(foo: bar)
-                :RequestHeader(bar: baz)
+                :RequestHeader(foo:bar)
+                :RequestHeader( bar : baz )
                 :RequestBody({
                     hello=>'world'
                 })
                 :RequestBody({
                     world=>'hello'
                 })
-                :ResponseHeader(abc: def)
-                :ResponseHeader(def: ghi)
+                :ResponseHeader(abc:def)
+                :ResponseHeader( def : ghi )
                 :ResponseBody([1,2,3])
                 :ResponseBody([4,5,6])
                 :RequestSchema({type=>'object'})

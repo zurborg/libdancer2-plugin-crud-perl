@@ -92,8 +92,8 @@ sub _apib_assets {
         return [],
     }
 
-    my @RequestHeaders  = map {split(m{\s*:\s*}, $_, 2)} @{ $def->{RequestHeader} };
-    my @ResponseHeaders = map {split(m{\s*:\s*}, $_, 2)} @{ $def->{ResponseHeader} };
+    my @RequestHeaders  = map { m{^\s*([^:]+?)\s*:\s*(.+?)\s*$}s ? ($1, $2) : () } @{ $def->{RequestHeader} };
+    my @ResponseHeaders = map { m{^\s*([^:]+?)\s*:\s*(.+?)\s*$}s ? ($1, $2) : () } @{ $def->{ResponseHeader} };
 
     my @RequestBody  = ref $def->{RequestBody}  ? @{$def->{RequestBody}}  : undef;
     my @ResponseBody = ref $def->{ResponseBody} ? @{$def->{ResponseBody}} : undef;
