@@ -8,6 +8,8 @@ use Moo;
 use Carp 'croak';
 use Dancer2;
 
+# VERSION
+
 with 'Dancer2::Core::Role::Serializer';
 
 has '+content_type' => (

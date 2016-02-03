@@ -6,6 +6,8 @@ use Moo 2;
 use Dancer2::Core::Types;
 use Dancer2::Core::HTTP;
 
+# VERSION
+
 =attr status
 
 =cut
