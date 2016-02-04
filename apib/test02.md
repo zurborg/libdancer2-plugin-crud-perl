@@ -2,7 +2,9 @@ FORMAT: 1A8
 
 # Title of generated API blueprint file
 
-And the description of it
+-foo
+
+-bar
 
 # Group person
 
@@ -166,8 +168,6 @@ Request Schema
 
 ## /person/{person_id}.{format}
 
-
-
 + Parameters
 
     + person_id: `456` (string, optional)
@@ -183,8 +183,6 @@ Request Schema
 
 ## /person/{person_id}.html
 
-
-
 + Parameters
 
     + person_id: `456` (string, optional)
@@ -192,8 +190,6 @@ Request Schema
 ### Update [PUT]
 
 ## /person/{person_id}.{format}
-
-
 
 + Parameters
 
@@ -209,8 +205,6 @@ Request Schema
 ### Patch [PATCH]
 
 ## /person/{person_id}.xml
-
-
 
 + Parameters
 

@@ -75,7 +75,7 @@ use tests;
     our $doc = generate_documentation();
 }
 
-my $md = Dancer2::Plugin::CRUD::Documentation::generate_apiblueprint($Webservice::doc);
+my $md = Dancer2::Plugin::CRUD::Documentation::generate_apiblueprint($Webservice::doc, name => 'Title of generated API blueprint file', description => [-foo,-bar]);
 
 if ($ENV{DUMP_APIB}) {
     print STDERR $md;

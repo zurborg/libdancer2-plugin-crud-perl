@@ -30,7 +30,7 @@ List of headers that appears in the response. (one header per line)
 
 use Attribute::Universal 0.003;
 
-use Text::API::Blueprint qw(Compile Concat);
+use Text::API::Blueprint 0.002 qw(Compile);
 
 use JSON ();
 use YAML ();
@@ -139,16 +139,19 @@ sub _apib_assets {
 
 sub _apib_resource {
     my ($method, $def, $res) = @_;
+
     my @captvars = map {( $_ => {
         type => 'string',
         example => 123,
     })} @{$res->{captvars}};
+
     if ($def->{hasid}) {
         push @captvars => ($res->{captvar} => {
             type => 'string',
             example => 456,
         });
     }
+
     unless (ref $def->{oformats} and keys %{$def->{oformats}} == 1) {
         my %formats = (
             json => 'application/json',
@@ -173,16 +176,14 @@ sub _apib_resource {
         push @desc => Text::API::Blueprint::Code($schema);
     }
 
-
     return {
-        #identifier => $method,
         uri => $def->{Path},
-        description => Concat(@{$def->{Description}}),
+        description => $def->{Description},
         parameters => [
             @captvars,
         ],
         actions => [{
-            description => Concat(@desc),
+            description => \@desc,
             identifier => ucfirst($method),
             method => uc($Dancer2::Plugin::CRUD::Constants::trigger_to_method{$method}),
             assets => _apib_assets($def),
@@ -215,9 +216,9 @@ sub _apib_groups {
 sub generate_apiblueprint {
     my ($docs, %info) = @_;
     my $groups = _apib_groups($docs);
+    my $caller = scalar caller;
     my $Compile = {
-        name => 'Title of generated API blueprint file',
-        description => "And the description of it",
+        name => "API of $caller",
         %info,
         groups => $groups,
     };
